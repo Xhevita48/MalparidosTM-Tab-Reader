@@ -551,6 +551,9 @@ async function getPageData(page, OPS) {
     } else texts.push({ s: it.str, x: t[4], y: t[5], w: it.width, h: h, font: it.fontName });
   });
   var ol = await page.getOperatorList(), segs = [], dots = [], beams = [], arcs = [], diags = [], ctm = [1, 0, 0, 1, 0, 0], stack = [], lw = 1;
+  texts.forEach(function (t) {
+    try { t.face = String(page.commonObjs.get(t.font).name || t.font).replace(/^[A-Z]{6}\+/, ""); } catch (e) { t.face = t.font; }
+  });
   var FILLS = [OPS.fill, OPS.eoFill, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke, OPS.closeEOFillStroke];
   // a beam is a short thick bar, level or slanted
   function beam(ax, ay, bx, by, th) {
@@ -659,8 +662,14 @@ var STD_E = { 4: [43, 38, 33, 28], 5: [43, 38, 33, 28, 23], 6: [64, 59, 55, 50, 
 function extractEngraved(pages) {
   var head = pages.length ? textLines(pages[0].texts.filter(function (t) { return t.y < pages[0].height * 0.3; })).join("\n") : "";
   var tm = head.match(/=\s*(\d{2,3})\b/), cm = head.match(/capo\s*(\d{1,2})/i);
-  var info = { tempo: tm ? +tm[1] : null, capo: cm ? +cm[1] : 0, dropD: /drop\s*d\b/i.test(head) };
-  var systems = [], sig = null, nStr = 0;
+  var info = { tempo: tm ? +tm[1] : null, capo: cm ? +cm[1] : 0, dropD: /drop\s*d\b/i.test(head), tempoWord: null, tempoGuess: null };
+  if (!info.tempo) {   // no number printed: go by the tempo word, if there is one
+    [[/\b(very slow(ly)?|grave|largo|lento|lent)\b/i, 54], [/\b(slow(ly)?|adagio)\b/i, 60], [/\b(andante|walking)\b/i, 76], [/\b(moderato|moderate(ly)?)\b/i, 100],
+     [/\b(allegretto)\b/i, 110], [/\b(allegro|fast|lively)\b/i, 126], [/\b(vivace|presto|very fast)\b/i, 160]].some(function (w) {
+      var mt = head.match(w[0]); if (mt) { info.tempoWord = mt[0]; info.tempoGuess = w[1]; } return !!mt;
+    });
+  }
+  var systems = [], sig = null, nStr = 0, otherDigits = {};
   pages.forEach(function (pd, pi) {
     var staves = findStaves(pd), vs = pd.segs.filter(function (s) { return !s.h; });
     var digits = pd.texts.filter(function (t) { return /^\d+$/.test(t.s); });
@@ -703,11 +712,11 @@ function extractEngraved(pages) {
       var above = null, sigs = [], used = [];
       staves.forEach(function (o) { if (!o.tab && o.bottom < st.top && st.top - o.bottom < 160 && (!above || o.bottom > above.bottom)) above = o; });
       if (above) {
-        var cand = digits.filter(function (t) { return t.y > above.top - above.sp && t.y < above.bottom + above.sp && t.s.length <= 2; });
+        var cand = digits.filter(function (t) { return t.y > above.top - above.sp && t.y < above.bottom + above.sp && t.s.length <= 2 && t.h >= above.sp * 3; });
         cand.forEach(function (lo) {
           cand.forEach(function (up) {
             var dy = lo.y - up.y;
-            if (Math.abs(lo.x - up.x) > 3 || dy < above.sp * 1.4 || dy > above.sp * 2.6) return;
+            if (lo.font !== up.font || Math.abs(lo.x - up.x) > 3 || dy < above.sp * 1.4 || dy > above.sp * 2.6) return;
             var num = +up.s, den = +lo.s, ok = function (d) { return [1, 2, 4, 8, 16].indexOf(d) >= 0; };
             if (!ok(den) && ok(den + 1)) { num++; den++; }   // some notation fonts export digits shifted by one
             if (ok(den) && num >= 1 && num <= 16) { sigs.push({ x: lo.x, beats: num * 4 / den }); used.push(lo, up); }
@@ -721,7 +730,11 @@ function extractEngraved(pages) {
         if (staves.some(function (o) { return o.tab && o !== st && t.y > o.top - o.sp && t.y < o.bottom + o.sp * 1.2; })) return;   // a fret number on the line above
         var dot = pd.texts.some(function (o) { return o.s === "." && Math.abs(o.y - t.y) < 1.5 && o.x > t.x && o.x - (t.x + t.w) < t.w * 0.6; });
         if (dot && (t.s === "1" || t.s === "2") && t.y < (above ? above.top : st.top) + 2) voltas.push({ x: t.x, n: +t.s });
-        else if (!dot && (t.s === "3" || t.s === "6")) tuplets.push({ x: t.x + t.w / 2, y: t.y - t.h * 0.35 });
+        else if (!dot) {
+          var fk = (t.face || t.font) + "|" + Math.round(t.h);
+          if (t.s === "3" || t.s === "6") tuplets.push({ x: t.x + t.w / 2, y: t.y - t.h * 0.35, key: fk });
+          else otherDigits[fk] = (otherDigits[fk] || 0) + 1;
+        }
       });
       // columns of notes, grouped into measures
       // how each note is sounded: an arc joining two numbers on a string is a hammer-on or pull-off, a slanted
@@ -787,6 +800,8 @@ function extractEngraved(pages) {
   }); }); });
   var tuning = (STD_E[nStr] || STD_E[6]).slice();
   if (info.dropD && nStr >= 6) tuning[5] -= 2;
+  // a typeface that also prints 1s, 2s and 4s beside the notes is fingering, so its 3s are not triplet marks
+  systems.forEach(function (s) { s.measures.forEach(function (m) { m.tuplets = m.tuplets.filter(function (u) { return (otherDigits[u.key] || 0) < 3; }); }); });
   var eng = { systems: systems, info: info, tuning: tuning, nStr: nStr, count: count, lead: lead, lead1: lead1 };
   buildSlots(pages, eng);
   return eng;
@@ -915,7 +930,7 @@ function lenCost(d, sl, last) {
   var v = sl.v;
   if (!v || d === v) return 0;
   if (sl.trip && d * 3 === v * 2) return 0;
-  if (d * 2 === v * 3) return sl.dotted ? 0.05 : 1.2;
+  if (d * 2 === v * 3) return sl.dotted ? 0.05 : 2;
   if (d < v) return last ? 1 : 0.3;     // another part comes in before this note is over
   return 3.5;                           // longer than the note that is written
 }
@@ -925,7 +940,7 @@ function fitMeasure(g, loose, slots, lead, T, lnc) {
   var k = g.length, P = [], pen0 = [], pen1 = [], i, a, b;
   for (i = 0; i < T; i++) { var x0 = posPenalty(i, false); if (x0 >= 0) { P.push(i); pen0.push(x0); pen1.push(posPenalty(i, true)); } }
   var n = P.length, dp = [], back = [], lg = g.map(function (v) { return Math.log(Math.max(v, 0.5)); });
-  var res = function (r, sp, sn) { return r > 0 ? Math.min(r * r / (2 * sp * sp), 1.2) : Math.min(r * r / (2 * sn * sn), 6); };
+  var res = function (r, sp, sn) { return r > 0 ? Math.min(r * r / (2 * sp * sp), 1.2) : Math.min(r * r / (2 * sn * sn), 3); };
   var first = new Array(n);
   for (a = 0; a < n; a++) {
     if (lead <= 0) first[a] = a === 0 ? 0 : Infinity;
@@ -933,12 +948,12 @@ function fitMeasure(g, loose, slots, lead, T, lnc) {
   }
   dp.push(first); back.push(null);
   for (i = 1; i < k; i++) {
-    var prev = dp[i - 1], cur = new Array(n), bk = new Array(n), sp = loose[i - 1] ? 0.7 : 0.33;
+    var prev = dp[i - 1], cur = new Array(n), bk = new Array(n), sp = loose[i - 1] ? 0.9 : 0.33, sn = loose[i - 1] ? 0.9 : 0.2;
     for (a = 0; a < n; a++) {
       var best = Infinity, bi = -1;
       for (b = 0; b < a; b++) {
         if (prev[b] === Infinity) continue;
-        var c = prev[b] + res(lg[i - 1] - lnc - SPACE_EXP * LN[P[a] - P[b]], sp, 0.14) + lenCost(P[a] - P[b], slots[i - 1], false);
+        var c = prev[b] + res(lg[i - 1] - lnc - SPACE_EXP * LN[P[a] - P[b]], sp, sn) + lenCost(P[a] - P[b], slots[i - 1], false);
         if (c < best) { best = c; bi = b; }
       }
       cur[a] = best + (trip[i] ? pen1[a] : pen0[a]); bk[a] = bi;
@@ -970,7 +985,7 @@ function analyzeRhythm(eng, beatsOverride) {
       for (i = 0; i < k; i++) {
         var nx = i + 1 < k ? slots[i + 1].x : m.xb, gap = nx - slots[i].x, gr = 0;
         m.cols.forEach(function (c) { if (c.grace && c.x > slots[i].x && c.x < nx) gr = Math.max(gr, nx - c.x); });
-        g.push(gr ? Math.max(gap - gr, gap * 0.5) : gap); loose.push(!!gr);
+        g.push(gap); loose.push(!!gr);
       }
       // without readable rests, extra room before the first note is the only sign that the bar starts with one
       var lead = 0;
@@ -988,12 +1003,21 @@ function analyzeRhythm(eng, beatsOverride) {
   if (!guess.length) jobs.forEach(function (j) { var sum = 0; j.g.forEach(function (v) { sum += Math.pow(v, 1 / SPACE_EXP); }); guess.push(SPACE_EXP * Math.log(sum / j.m.T)); });
   guess.sort(function (a, b) { return a - b; });
   var lnc0 = guess[Math.floor(guess.length * 0.4)];
-  // a short opening bar is a pickup: size it from its own spacing
+  // a short opening bar is a pickup. Try the full bar and each shorter length, and only call it a pickup
+  // when a shorter bar explains the notes clearly better
   var j0 = jobs[0];
   if (j0.isFirst && !beatsOverride) {
-    var est = 0; j0.g.forEach(function (v) { est += Math.pow(v / Math.exp(lnc0), 1 / SPACE_EXP); });
-    var beats = Math.max(1, Math.round(est / TPB));
-    if (beats * TPB <= j0.m.T * 0.75) { j0.m.T = beats * TPB; j0.m.pickup = true; j0.lead = 0; }
+    var costFor = function (T) {
+      var best = Infinity;
+      for (var s = -R; s <= R; s++) {
+        var f = fitMeasure(j0.g, j0.loose, j0.slots, 0, T, lnc0 + s * STEP), dd = s * STEP;
+        if (f && f.cost + dd * dd / (2 * SC * SC) < best) best = f.cost + dd * dd / (2 * SC * SC);
+      }
+      return best;
+    };
+    var fullCost = costFor(j0.m.T), pickT = 0, pickCost = Infinity;
+    for (var pt = TPB; pt < j0.m.T; pt += TPB) { var pc = costFor(pt); if (pc < pickCost) { pickCost = pc; pickT = pt; } }
+    if (pickT && pickCost + 2 < fullCost) { j0.m.T = pickT; j0.m.pickup = true; j0.lead = 0; }
   }
   jobs.forEach(function (j) {
     j.fits = [];
@@ -1031,11 +1055,11 @@ function playOrder(eng, follow) {
     if (m.startRep) start = i;
     if (second && m.volta === 1) {   // second time round: jump over the first ending
       var e = i; while (e < list.length && !list[e].m.endRep) e++;
-      if (e < list.length) { taken[e] = true; i = e + 1; second = false; continue; }
+      if (e < list.length) { taken[e] = true; i = e + 1; start = i; second = false; continue; }
     }
     order.push(list[i]);
     if (m.endRep && !taken[i]) { taken[i] = true; i = start; second = true; continue; }
-    if (m.endRep) second = false;
+    if (m.endRep) { second = false; start = i + 1; }
     i++;
   }
   return order;
@@ -1449,14 +1473,16 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     if (!res) return false;
     var id = ++loadId;
     reset(); eng = res; beatsEl.value = "0"; $("reps").checked = true; setMode("pdf");
-    writtenTempo = eng.info.tempo || null;
-    if (writtenTempo) bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, writtenTempo));
+    // a printed number is the tempo; failing that a tempo word such as "Slowly" gives a starting point; failing that, 80
+    writtenTempo = eng.info.tempo || eng.info.tempoGuess || null;
+    bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, writtenTempo || 80));
     showTempo();
     buildSchedule();
     var top = 0; pdfEvents.forEach(function (e) { e.notes.forEach(function (n) { if (n.fret > top) top = n.fret; }); });
     buildBoard(eng.nStr, eng.tuning, top);
     var bits = [];
     if (eng.info.tempo) bits.push("tempo " + eng.info.tempo);
+    else if (eng.info.tempoWord) bits.push("tempo \u201c" + eng.info.tempoWord + "\u201d (set to " + eng.info.tempoGuess + ")");
     if (eng.info.dropD) bits.push("Drop D");
     if (eng.info.capo) bits.push("capo " + eng.info.capo);
     if (hasRepeats(eng)) bits.push("repeat signs");
@@ -1776,7 +1802,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   }
   // "92241693-My_Star_Final_Fantasy_XVI.pdf" -> "My Star Final Fantasy XVI"
   function cleanName(fn) {
-    return fn.replace(/\.(pdf|txt)$/i, "").replace(/^\d{5,}[-_ ]+/, "").replace(/[_]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) || "Untitled";
+    return fn.replace(/\.(pdf|txt)$/i, "").replace(/^\d{5,}[-_ ]+/, "").replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) || "Untitled";
   }
 
   /* screens */
