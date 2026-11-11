@@ -11,7 +11,7 @@ html { color-scheme: light; } body { margin: 0; } img { max-width: 100%; } [hidd
 :root {
   --bg: #eef1f3; --panel: #ffffff; --ink: #18202a; --muted: #5c6875; --line: #d3d9df;
   --accent: #2f55d4; --accent-ink: #ffffff;
-  --hit: #c2410c; --hit-bg: #ffe1cf; --err: #b42318;
+  --hit: #c2410c; --hit-bg: #ffe1cf; --err: #b42318; --ok: #1a7f4b; --star: #b86a00;
   --wood: #4a342b; --wire: #c9ccd1; --string: #eadfc4; --inlay: #d9d2bf; --dot: #ffb020; --dot-ink: #1b1300;
   --paper: #ffffff; --paper-cursor: #2f55d4; --paper-hit: #e8590c;   /* printed pages stay white in both themes */
   --display: "Space Grotesk", "Inter", system-ui, sans-serif;
@@ -21,13 +21,13 @@ html { color-scheme: light; } body { margin: 0; } img { max-width: 100%; } [hidd
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #12161c; --panel: #1b212a; --ink: #e6ebf1; --muted: #94a0ae; --line: #2e3743;
   --accent: #8aa4ff; --accent-ink: #0b1020;
-  --hit: #ffa36b; --hit-bg: #4d2b16; --err: #ff8a7a;
+  --hit: #ffa36b; --hit-bg: #4d2b16; --err: #ff8a7a; --ok: #5fd39a; --star: #ffb020;
   --wood: #3a2922; --wire: #aeb3ba; --string: #eadfc4; --inlay: #b8b09c; --dot: #ffb020; --dot-ink: #1b1300;
   color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #12161c; --panel: #1b212a; --ink: #e6ebf1; --muted: #94a0ae; --line: #2e3743;
   --accent: #8aa4ff; --accent-ink: #0b1020;
-  --hit: #ffa36b; --hit-bg: #4d2b16; --err: #ff8a7a;
+  --hit: #ffa36b; --hit-bg: #4d2b16; --err: #ff8a7a; --ok: #5fd39a; --star: #ffb020;
   --wood: #3a2922; --wire: #aeb3ba; --string: #eadfc4; --inlay: #b8b09c; --dot: #ffb020; --dot-ink: #1b1300;
   color-scheme: dark }
 
@@ -121,12 +121,101 @@ button:disabled { opacity: .6; cursor: default; }
 .empty { padding: 18px 14px; color: var(--muted); }
 .playhead { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
 section { display: flex; flex-direction: column; gap: 14px; } section[hidden] { display: none; } section.row, section.deck { gap: 10px 14px; }
+
+/* ----- navigation, small parts ----- */
+.nav { display: flex; flex-wrap: wrap; gap: 4px; }
+.nav button { border: 0; background: none; padding: 6px 12px; border-radius: 999px; color: var(--muted); }
+.nav button.on { background: var(--panel); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-left: 1px solid var(--line); border-radius: 0; padding: 6px 10px; font-size: 13px; }
+.seg button:first-child { border-left: 0; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+h3 { font-family: var(--display); font-size: 1rem; margin: 6px 0 0; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; }
+.list:empty { display: none; }
+.rname { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.card { display: flex; flex-direction: column; gap: 10px; }
+.card.row { flex-direction: row; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; background: var(--ink); color: var(--bg);
+  padding: 10px 16px; border-radius: 10px; max-width: calc(100% - 32px); box-shadow: 0 4px 16px rgba(0, 0, 0, .25); font-size: 14px; }
+.toast .link { color: inherit; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 14px; }
+.keys dt { font-family: var(--mono); font-weight: 700; } .keys dd { margin: 0; color: var(--muted); }
+#soundbox .row { margin-top: 10px; }
+#board .nextdot circle { fill: none; stroke: var(--dot); stroke-width: 2; opacity: .85; }
+#board .nextdot text { fill: var(--string); text-anchor: middle; font-weight: 700; }
+#board .nextdot.off { display: none; }
+
+/* ----- library ----- */
+.star { border: 0; background: none; padding: 2px 4px; font-size: 20px; line-height: 1; color: var(--muted); }
+.star.on { color: var(--star); }
+.artist { font-size: 14px; }
+.tags, .tagbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 500; background: none; color: var(--muted); }
+.tag.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tag.near { border-color: var(--hit); color: var(--hit); }
+.tag.on.near { color: var(--accent-ink); }
+.recentlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 8px; }
+.recentitem { flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 12px; min-width: 0; }
+.recentitem .rname { font-size: 15px; }
+.editform { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: center; width: 100%; }
+.editform label { font-size: 13px; font-weight: 600; }
+.editform .tabacts { grid-column: 2; }
+.libfoot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.meterbox { flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+#meterfill { height: 100%; width: 0; background: var(--accent); }
+#view-lib.nomember #search, #view-lib.nomember .libhead .ctl, #view-lib.nomember #addlabel { display: none; }
+
+/* ----- practice ----- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-family: var(--display); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 13px; }
+.daybars { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.daycol { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.dayval { font-size: 12px; font-variant-numeric: tabular-nums; min-height: 1.3em; }
+.daytrack { height: 90px; width: 100%; max-width: 26px; display: flex; align-items: flex-end; background: var(--bg); border-radius: 4px; }
+.daybar { width: 100%; border-radius: 4px; background: var(--accent); }
+.daybar.some { min-height: 3px; }
+.daylab { font-size: 11px; color: var(--muted); }
+.ptime { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ----- tuner ----- */
+.tuner { display: flex; flex-direction: column; gap: 14px; max-width: 460px; width: 100%; margin: 0 auto; }
+.readout { flex-direction: row; align-items: center; justify-content: space-between; text-align: center; }
+.tu-mid { flex: 1; min-width: 0; }
+.tu-note { font-family: var(--display); font-size: 4.5rem; line-height: 1; font-weight: 700; }
+.tu-note sub { font-size: 1.6rem; color: var(--muted); margin-left: 2px; }
+#tu-hint { margin: 6px 0 0; font-weight: 600; font-size: 1.05rem; }
+#tu-hint.ok { color: var(--ok); }
+#tu-detail { margin: 2px 0 0; min-height: 1.3em; font-variant-numeric: tabular-nums; }
+.lamp { font-size: 2rem; line-height: 1; color: var(--line); width: 1.4em; }
+.lamp.on { color: var(--hit); }
+.tu-modes, .tu-strings, .octs { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; }
+.tu-dial svg { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; }
+.tu-dial .face { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.tu-dial .tk { stroke: var(--line); stroke-width: 1.5; }
+.tu-dial .tk.big { stroke: var(--muted); stroke-width: 3; }
+.tu-dial .nl { font-family: var(--body); font-size: 19px; font-weight: 600; fill: var(--muted); }
+.tu-dial .nl.on { fill: var(--ink); }
+.tu-dial .needle { stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
+.tu-dial .hub, .tu-dial .tip { fill: var(--accent); }
+#libmsg:empty, #practmsg:empty, #memmsg:empty, #trashmsg:empty, #tu-msg:empty { display: none; }
+.oct { width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--line); color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.oct.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <h1>Tab Player</h1>
+    <nav id="nav" class="nav" aria-label="Sections">
+      <button type="button" id="nav-lib" data-view="lib">Sign in</button>
+      <button type="button" id="nav-practice" data-view="practice" hidden>Practice</button>
+      <button type="button" id="nav-tuner" data-view="tuner">Tuner</button>
+      <button type="button" id="nav-members" data-view="members" hidden>Members</button>
+    </nav>
     <div id="account" class="row" hidden>
       <span id="who"></span>
       <button id="pwbtn" type="button">Change password</button>
@@ -156,13 +245,46 @@ section { display: flex; flex-direction: column; gap: 14px; } section[hidden] { 
   </section>
 
   <section id="view-lib" hidden>
+    <div id="recent" hidden>
+      <h2>Recently played</h2>
+      <div id="recentlist" class="recentlist"></div>
+    </div>
     <div class="row libhead">
       <h2>Library</h2>
-      <input id="search" type="search" placeholder="Search tabs" aria-label="Search tabs">
+      <input id="search" type="search" placeholder="Search name, artist or tag" aria-label="Search tabs">
+      <label class="ctl" for="sort">Sort
+        <select id="sort">
+          <option value="name" selected>Name</option>
+          <option value="artist">Artist</option>
+          <option value="new">Newest</option>
+          <option value="recent">Recently played</option>
+          <option value="most">Most played</option>
+        </select>
+      </label>
+      <label class="ctl" for="favonly"><input type="checkbox" id="favonly">Favorites</label>
       <label class="btn primary" id="addlabel" for="addfile">Add tabs<input type="file" id="addfile" accept=".pdf,.txt,application/pdf,text/plain" multiple></label>
     </div>
+    <div id="tagbar" class="tagbar" hidden></div>
     <p id="libmsg" class="muted" role="status" aria-live="polite"></p>
     <ul id="tablist"></ul>
+    <div id="libfoot" class="libfoot" hidden>
+      <div class="meterbox">
+        <div class="meter" aria-hidden="true"><div id="meterfill"></div></div>
+        <span id="metertext" class="meta"></span>
+      </div>
+      <button id="backup" type="button">Download all tabs (.zip)</button>
+      <button id="trashbtn" type="button">Trash</button>
+    </div>
+  </section>
+
+  <section id="view-trash" hidden>
+    <div class="playhead">
+      <button id="trashback" type="button">&larr; Library</button>
+      <h2>Trash</h2>
+    </div>
+    <p class="note">Deleted tabs wait here for 30 days. After that they are removed for good the next time one of you opens the library.</p>
+    <p id="trashmsg" class="muted" role="status" aria-live="polite"></p>
+    <ul id="trashlist" class="list"></ul>
   </section>
 
   <section id="view-player" hidden>
@@ -185,7 +307,10 @@ section { display: flex; flex-direction: column; gap: 14px; } section[hidden] { 
       <div class="row">
         <button id="play" class="primary" type="button">Play</button>
         <button id="stop" type="button">Back to start</button>
-        <label class="ctl" for="bpm">Tempo <input type="range" id="bpm" min="30" max="220" value="80"><b id="bpmv">80 BPM</b></label>
+        <label class="ctl" for="bpm">Tempo <input type="range" id="bpm" min="20" max="220" step="0.5" value="80"><b id="bpmv">80 BPM</b></label>
+        <span id="pctbtns" class="seg" role="group" aria-label="Tempo as a share of the written speed" hidden>
+          <button type="button" data-pct="50">50%</button><button type="button" data-pct="75">75%</button><button type="button" data-pct="100">100%</button>
+        </span>
         <label class="ctl" id="divctl" for="div">One dash is
           <select id="div"><option value="4" selected>a 16th note</option><option value="2">an 8th note</option><option value="1">a quarter note</option></select>
         </label>
@@ -196,19 +321,109 @@ section { display: flex; flex-direction: column; gap: 14px; } section[hidden] { 
         <label class="ctl" for="countin"><input type="checkbox" id="countin" checked>Count-in</label>
         <label class="ctl" for="metro"><input type="checkbox" id="metro">Metronome</label>
         <label class="ctl" for="loop"><input type="checkbox" id="loop">Loop</label>
+        <label class="ctl" for="muteg"><input type="checkbox" id="muteg">Mute guitar</label>
       </div>
       <div id="board"></div>
     </div>
 
+    <details id="soundbox">
+      <summary>Volume and keyboard shortcuts</summary>
+      <div class="row">
+        <label class="ctl" for="volg">Guitar <input type="range" id="volg" min="0" max="100" value="80"></label>
+        <label class="ctl" for="volm">Metronome <input type="range" id="volm" min="0" max="100" value="60"></label>
+      </div>
+      <dl class="keys">
+        <dt>Space</dt><dd>Play or pause</dd>
+        <dt>&larr; &rarr;</dt><dd>Back to the start of the bar, or on to the next bar</dd>
+        <dt>Home</dt><dd>Back to the start</dd>
+        <dt>+ &minus;</dt><dd>Tempo up or down by 5 BPM</dd>
+        <dt>L</dt><dd>Loop on or off</dd>
+        <dt>M</dt><dd>Metronome on or off</dd>
+        <dt>G</dt><dd>Mute or unmute the guitar</dd>
+      </dl>
+    </details>
+
     <div id="tab" aria-label="Tab"></div>
     <p class="note" id="note"></p>
   </section>
+
+  <section id="view-practice" hidden>
+    <h2>Practice</h2>
+    <p id="practmsg" class="muted" role="status"></p>
+    <div class="stats">
+      <div class="stat"><b id="st-streak">0</b><span>day streak</span></div>
+      <div class="stat"><b id="st-week">0 min</b><span>last 7 days</span></div>
+      <div class="stat"><b id="st-total">0 min</b><span>all time</span></div>
+      <div class="stat"><b id="st-best">0</b><span>longest streak, last 60 days</span></div>
+    </div>
+    <h3>Last 14 days</h3>
+    <div id="daybars" class="daybars" role="img" aria-label="Minutes practised on each of the last 14 days"></div>
+    <h3>By tab</h3>
+    <ul id="practlist" class="list"></ul>
+    <p class="note">Time counts while a tab from the library is playing. A day counts toward the streak once you have played for a minute. Each of you has your own log.</p>
+  </section>
+
+  <section id="view-tuner" hidden>
+    <h2>Tuner</h2>
+    <div class="tuner">
+      <div class="readout card">
+        <span id="tu-flat" class="lamp" aria-hidden="true">&#9837;</span>
+        <div class="tu-mid">
+          <div class="tu-note"><span id="tu-name">&ndash;</span><sub id="tu-oct"></sub></div>
+          <p id="tu-hint" role="status" aria-live="polite">Start the tuner and play one string.</p>
+          <p id="tu-detail" class="meta"></p>
+        </div>
+        <span id="tu-sharp" class="lamp" aria-hidden="true">&#9839;</span>
+      </div>
+      <div class="row tu-modes">
+        <span class="seg" role="group" aria-label="Tuner mode">
+          <button type="button" id="tu-chrom" class="on" aria-pressed="true">Chromatic</button><button type="button" id="tu-str" aria-pressed="false">Guitar strings</button>
+        </span>
+        <label class="ctl" id="tu-tuningctl" for="tu-tuning" hidden>Tuning
+          <select id="tu-tuning">
+            <option value="std" selected>Standard (E A D G B E)</option>
+            <option value="dropd">Drop D (D A D G B E)</option>
+            <option value="tab">The tab that is open</option>
+          </select>
+        </label>
+      </div>
+      <div id="tu-strings" class="tu-strings" role="group" aria-label="String to tune" hidden></div>
+      <div id="tu-dial" class="tu-dial"></div>
+      <div id="tu-octs" class="octs" aria-label="Octave"></div>
+      <div class="row">
+        <button id="tu-start" class="primary" type="button">Start tuner</button>
+        <span id="tu-msg" class="muted" role="status"></span>
+      </div>
+      <p class="note">The tuner listens through this device's microphone, and only while this screen is open. The needle points at the note it hears; the further it sits from a note mark, the more out of tune the string is.</p>
+    </div>
+  </section>
+
+  <section id="view-members" hidden>
+    <h2>Members</h2>
+    <p id="memmsg" class="muted" role="status" aria-live="polite"></p>
+    <ul id="memlist" class="list"></ul>
+    <div id="ownerbox" class="card" hidden>
+      <h3>Member limit</h3>
+      <div class="row">
+        <button id="limdown" type="button" aria-label="Lower the limit">&minus;</button>
+        <b id="limval">2</b>
+        <button id="limup" type="button" aria-label="Raise the limit">+</button>
+        <span id="limnote" class="meta"></span>
+      </div>
+      <h3>Waiting for approval</h3>
+      <ul id="waitlist" class="list"></ul>
+      <p class="note">To add someone, raise the limit and then create their account in Supabase (Authentication, Users, Add user). An account created while there is room is approved by itself. One created while the library was full shows up here for you to approve.</p>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden><span id="toasttext"></span> <button id="toastbtn" class="link" type="button" hidden></button></div>
 </div>
 <span id="measure" class="mono">0000000000000000000000000000000000000000</span>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script>
 /* ---------- Tab parser (no DOM) ---------- */
@@ -253,13 +468,19 @@ function makeBlock(ls, captions) {
   });
   var notesAt = {}, notesByLine = ls.map(function () { return []; }), maxFret = 0, count = 0;
   ls.forEach(function (s, li) {
-    var c = start;
+    var c = start, prev = null;
     while (c < s.length) {
       var ch = s[c];
       if (ch >= "0" && ch <= "9") {
         var w = 1, fret = +ch, nx = s[c + 1];
         if (nx >= "0" && nx <= "9" && +(ch + nx) >= 10 && +(ch + nx) <= 24) { fret = +(ch + nx); w = 2; }
         var note = { line: li, col: c, w: w, fret: fret, midi: tuning[li] + fret, el: null };
+        if (prev) {   // 5h7 and 7p5 are a hammer-on and a pull-off; 5/7, 7\\5 and 5s7 are slides
+          var mid = s.slice(prev.col + prev.w, c);
+          if (/^-*[hHpP^]-*$/.test(mid)) note.legato = true;
+          else if (/^-*[\/\\sS]-*$/.test(mid)) { note.slide = true; note.from = prev.fret; }
+        }
+        prev = note;
         (notesAt[c] = notesAt[c] || []).push(note);
         notesByLine[li].push(note);
         if (fret > maxFret) maxFret = fret;
@@ -322,7 +543,7 @@ async function getPageData(page, OPS) {
       for (var q = 0; q < str.length; q++) texts.push({ s: str[q], x: t[4] + it.width * q / str.length, y: t[5], w: it.width / str.length, h: h, font: it.fontName });
     } else texts.push({ s: it.str, x: t[4], y: t[5], w: it.width, h: h, font: it.fontName });
   });
-  var ol = await page.getOperatorList(), segs = [], dots = [], beams = [], ctm = [1, 0, 0, 1, 0, 0], stack = [], lw = 1;
+  var ol = await page.getOperatorList(), segs = [], dots = [], beams = [], arcs = [], diags = [], ctm = [1, 0, 0, 1, 0, 0], stack = [], lw = 1;
   var FILLS = [OPS.fill, OPS.eoFill, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke, OPS.closeEOFillStroke];
   // a beam is a short thick bar, level or slanted
   function beam(ax, ay, bx, by, th) {
@@ -374,12 +595,17 @@ async function getPageData(page, OPS) {
           if (Math.abs(poly[0][0] - poly[1][0]) < 0.6 && Math.abs(poly[2][0] - poly[3][0]) < 0.6 && Math.abs(tl - tr) < 1)
             beam(poly[0][0], (poly[0][1] + poly[1][1]) / 2, poly[2][0], (poly[2][1] + poly[3][1]) / 2, (tl + tr) / 2);
         } else if (!filled && poly.length === 2 && lw * scale >= 1.3) beam(poly[0][0], poly[0][1], poly[1][0], poly[1][1], lw * scale);
+        else if (!filled && poly.length === 2) {
+          var ddx = Math.abs(poly[0][0] - poly[1][0]), ddy = Math.abs(poly[0][1] - poly[1][1]);
+          if (ddx > 2 && ddx < 40 && ddy > 1.2) diags.push({ x0: Math.min(poly[0][0], poly[1][0]), x1: Math.max(poly[0][0], poly[1][0]), y0: Math.min(poly[0][1], poly[1][1]), y1: Math.max(poly[0][1], poly[1][1]) });
+        }
       }
       var bw = bb[2] - bb[0], bh = bb[3] - bb[1];
       if (curves >= 2 && bw > 0.8 && bw < 5 && bh > 0.8 && bh < 5 && Math.abs(bw - bh) < 1.2) dots.push({ x: (bb[0] + bb[2]) / 2, y: (bb[1] + bb[3]) / 2 });
+      else if (curves >= 1 && bw >= 3) arcs.push({ x0: bb[0], y0: bb[1], x1: bb[2], y1: bb[3] });
     }
   }
-  return { width: vp.width, height: vp.height, texts: texts, segs: segs, dots: dots, beams: beams };
+  return { width: vp.width, height: vp.height, texts: texts, segs: segs, dots: dots, beams: beams, arcs: arcs, diags: diags };
 }
 
 function textLines(texts) {
@@ -447,7 +673,7 @@ function extractEngraved(pages) {
       on.forEach(function (d) {
         var p = notes[notes.length - 1];
         if (p && p.line === d.line && Math.abs(d.x - p.x) < d.w * 0.5) return;   // same number drawn twice
-        if (p && p.line === d.line && p.s !== "0" && d.x - (p.x + p.w) < d.w * 0.3 && +(p.s + d.s) <= 24) { p.s += d.s; p.w = d.x + d.w - p.x; }
+        if (p && p.line === d.line && p.s !== "0" && Math.abs(p.h - d.h) < 0.6 && d.x - (p.x + p.w) < d.w * 0.3 && +(p.s + d.s) <= 24) { p.s += d.s; p.w = d.x + d.w - p.x; }
         else notes.push({ line: d.line, x: d.x, w: d.w, s: d.s, h: d.h });
       });
       // barlines that cross the whole tab staff; a double or repeat barline keeps both of its edges
@@ -491,6 +717,24 @@ function extractEngraved(pages) {
         else if (!dot && (t.s === "3" || t.s === "6")) tuplets.push({ x: t.x + t.w / 2, y: t.y - t.h * 0.35 });
       });
       // columns of notes, grouped into measures
+      // how each note is sounded: an arc joining two numbers on a string is a hammer-on or pull-off, a slanted
+      // line between them is a slide, and a number in brackets is a tied note that keeps ringing
+      var byLine = {};
+      notes.forEach(function (nt) { (byLine[nt.line] = byLine[nt.line] || []).push(nt); });
+      var sarcs = (pd.arcs || []).filter(function (a) { return a.y1 > st.top - st.sp * 2.2 && a.y0 < st.bottom + st.sp && a.y1 - a.y0 < st.sp * 1.2 && a.x1 - a.x0 < 60; });
+      var sdiag = (pd.diags || []).filter(function (d) { return d.y0 > st.top - st.sp && d.y1 < st.bottom + st.sp && d.y1 - d.y0 < st.sp * 1.6; });
+      var parens = pd.texts.filter(function (t) { return t.s === "(" && t.y > st.top - st.sp && t.y < st.bottom + st.sp; });
+      Object.keys(byLine).forEach(function (li) {
+        var row = byLine[li].sort(function (a, b) { return a.x - b.x; }), ly = st.top + li * st.sp;
+        row.forEach(function (q, qi) {
+          var qc = q.x + q.w / 2, p = row[qi - 1];
+          if (parens.some(function (t) { return Math.abs(t.y - q.h * 0.36 - ly) < st.sp * 0.5 && q.x - t.x > 0 && q.x - t.x < q.w * 1.6; })) q.tied = true;
+          if (!p) return;
+          var pc = p.x + p.w / 2;
+          if (sarcs.some(function (a) { var ay = (a.y0 + a.y1) / 2; return ay > ly - st.sp * 1.6 && ay < ly + st.sp * 0.6 && Math.abs(a.x0 - pc) < 5.5 && Math.abs(a.x1 - qc) < 5.5; })) q.legato = true;
+          if (sdiag.some(function (d) { var dy = (d.y0 + d.y1) / 2; return Math.abs(dy - ly) < st.sp * 0.7 && d.x0 > pc - 1 && d.x1 < qc + 1 && d.x0 - (p.x + p.w) < 6 && q.x - d.x1 < 6; })) { q.slide = true; q.from = +p.s; }
+        });
+      });
       // a column is every number printed at one moment; two-digit frets are centred, so compare centres
       var dws = notes.map(function (nt) { return nt.w / nt.s.length; }).sort(function (a, b) { return a - b; }), dw = dws[dws.length >> 1] || 5;
       notes.forEach(function (nt) { nt.cx = nt.x + nt.w / 2; });
@@ -801,7 +1045,7 @@ function engravedTimeline(eng, beatsOverride, follow) {
     m.cols.forEach(function (c) {
       var ev = { beat: t, sys: o.si, x: c.x, notes: c.notes.map(function (nt) {
         var fret = +nt.s; if (fret > maxFret) maxFret = fret;
-        return { line: nt.line, fret: fret, midi: eng.tuning[nt.line] + fret + eng.info.capo, x: nt.x, w: nt.w };
+        return { line: nt.line, fret: fret, midi: eng.tuning[nt.line] + fret + eng.info.capo, x: nt.x, w: nt.w, legato: !!nt.legato, slide: !!nt.slide, tied: !!nt.tied, from: nt.from };
       }) };
       events.push(ev);
       if (c.grace) { pend.push(ev); return; }
@@ -827,8 +1071,8 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   var playBtn = $("play"), bpmEl = $("bpm"), divEl = $("div"), beatsEl = $("beats");
   var mode = "text", blocks = [], steps = [], eng = null, pdfEvents = [], barList = [], pageEls = [], rings = [];
   var items = [], total = 0, pos = 0, shownItem = -1, lit = [], liveBlock = -1, liveSys = -1;
-  var ctx = null, master = null, playing = false, timer = null, nextTime = 0, vq = [], voices = {}, bufs = new Map();
-  var board = null, loadId = 0;
+  var ctx = null, master = null, guitarGain = null, clickGain = null, playing = false, timer = null, nextTime = 0, vq = [], voices = {}, bufs = new Map();
+  var board = null, loadId = 0, writtenTempo = null, hooks = { play: null, pause: null, changed: null };
   var NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   var reduced = function () { return matchMedia("(prefers-reduced-motion: reduce)").matches; };
 
@@ -842,7 +1086,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
           ? "Note lengths are read from the notation staff above the tab (beams, flags, dots, rests and triplet marks)."
           : "This PDF has no notation staff, so note lengths are estimated from how far apart the numbers are printed.") +
         " Repeat signs and 1st/2nd endings are followed. D.S., D.C. and coda jumps are not."
-      : "Click anywhere in the tab to start from that spot. Space bar plays and pauses. Hammer-ons, slides and bends play as plain notes, and muted notes (x) are skipped.";
+      : "Click anywhere in the tab to start from that spot. Space bar plays and pauses. Hammer-ons and pull-offs (h, p) play softer, slides (/ \\) glide into the note, bends play as plain notes, and muted notes (x) are skipped.";
   }
 
   /* ----- schedule: one sorted list of things to sound, for either kind of tab ----- */
@@ -963,10 +1207,21 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var y = viewTop + window.scrollY - document.querySelector(".deck").offsetHeight - 14;
     window.scrollTo({ top: Math.max(0, y), behavior: reduced() ? "auto" : "smooth" });
   }
+  // scroll the line that holds the current note into view
+  function reveal() {
+    var it = items[shownItem]; if (!it || it.vis < 0) return;
+    if (mode === "pdf") {
+      var ev = pdfEvents[it.vis], sys = ev && eng.systems[ev.sys], pe = sys && pageEls[sys.page];
+      if (pe) { var r = pe.wrap.getBoundingClientRect(); scrollToY(r.top + sys.sysTop / pe.H * r.height); }
+    } else if (steps[it.vis]) scrollToY(blocks[steps[it.vis].b].sys.getBoundingClientRect().top);
+  }
   function show(itemIdx, scroll) {
     var it = items[itemIdx]; if (!it || it.vis < 0) return;
     shownItem = itemIdx;
     if (mode === "text") showText(it.vis, scroll); else showPdf(it.vis, scroll);
+    var nx = [];   // what comes next, shown faintly on the fretboard
+    for (var j = itemIdx + 1; j < items.length && j < itemIdx + 400; j++) if (items[j].vis >= 0 && items[j].notes.length) { nx = items[j].notes; break; }
+    nextDots(nx);
   }
 
   /* ----- fretboard ----- */
@@ -992,10 +1247,20 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       s.push('<line class="str" x1="' + x0 + '" x2="' + x1 + '" y1="' + y + '" y2="' + y + '" stroke-width="' + (0.8 + i * 0.28) + '"/>');
       s.push('<text x="2" y="' + (y + 3.5) + '">' + NAMES[((tuning[i] % 12) + 12) % 12] + "</text>");
     }
+    for (i = 0; i < n; i++) s.push('<g class="nextdot off"><circle r="7"/><text y="3.5"></text></g>');
     for (i = 0; i < n; i++) s.push('<g class="dot off"><circle r="8"/><text y="3.5"></text></g>');
     s.push("</svg>");
     boardEl.innerHTML = s.join("");
-    board = { top: top, gap: gap, mid: mid, dots: boardEl.querySelectorAll(".dot") };
+    board = { top: top, gap: gap, mid: mid, dots: boardEl.querySelectorAll(".dot"), next: boardEl.querySelectorAll(".nextdot") };
+  }
+  function nextDots(notes) {
+    for (var d = 0; d < board.next.length; d++) board.next[d].classList.add("off");
+    notes.forEach(function (n) {
+      var g = board.next[n.line]; if (!g || n.tied) return;
+      g.setAttribute("transform", "translate(" + board.mid(n.fret) + "," + (board.top + n.line * board.gap) + ")");
+      g.querySelector("text").textContent = n.fret;
+      g.classList.remove("off");
+    });
   }
   function dots(notes) {
     for (var d = 0; d < board.dots.length; d++) board.dots[d].classList.add("off");
@@ -1013,15 +1278,24 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       var comp = ctx.createDynamicsCompressor();
       master = ctx.createGain(); master.gain.value = 0.7;
+      guitarGain = ctx.createGain(); clickGain = ctx.createGain();
+      guitarGain.connect(master); clickGain.connect(master);
       master.connect(comp); comp.connect(ctx.destination);
+      applyVolumes();
     }
     if (ctx.state === "suspended") ctx.resume();
+  }
+  // the sliders sit at 80 and 60 by default, which is the normal level for each
+  function applyVolumes() {
+    if (!ctx) return;
+    guitarGain.gain.setTargetAtTime($("muteg").checked ? 0 : Math.pow(+$("volg").value / 80, 2), ctx.currentTime, 0.02);
+    clickGain.gain.setTargetAtTime(Math.pow(+$("volm").value / 60, 2), ctx.currentTime, 0.02);
   }
   // Plucked string (Karplus-Strong): a burst of noise fed round a delay line one period long.
   function stringBuf(N) {
     if (bufs.has(N)) return bufs.get(N);
-    var sr = ctx.sampleRate, len = Math.floor(sr * 2.4), buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
-    var i, prev = 0, peak = 0, decay = Math.pow(0.5, N / (sr * 0.55));
+    var sr = ctx.sampleRate, len = Math.floor(sr * 3.2), buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    var i, prev = 0, peak = 0, decay = Math.pow(0.5, N / (sr * 0.9));   // long enough for held and tied notes to ring
     for (i = 0; i < N; i++) { prev = 0.55 * prev + 0.45 * (Math.random() * 2 - 1); d[i] = prev; }
     for (i = N; i < len; i++) d[i] = decay * 0.5 * (d[i - N] + d[i - N + 1]);
     for (i = 0; i < len; i++) if (Math.abs(d[i]) > peak) peak = Math.abs(d[i]);
@@ -1030,10 +1304,20 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     bufs.set(N, buf); return buf;
   }
   function pluck(n, t) {
+    if (n.tied) return;                       // a tied note is not picked again: the string keeps ringing
     var f = 440 * Math.pow(2, (n.midi - 69) / 12), N = Math.max(2, Math.round(ctx.sampleRate / f));
-    var src = ctx.createBufferSource(), g = ctx.createGain();
-    src.buffer = stringBuf(N); src.playbackRate.value = f * N / ctx.sampleRate;
-    g.gain.value = 0.5; src.connect(g); g.connect(master); src.start(t);
+    var src = ctx.createBufferSource(), g = ctx.createGain(), rate = f * N / ctx.sampleRate;
+    src.buffer = stringBuf(N);
+    if (n.slide && n.from !== undefined && n.from !== null && n.from !== n.fret) {
+      // a slide starts at the fret it came from and glides up or down to the new one
+      src.playbackRate.setValueAtTime(rate * Math.pow(2, (n.from - n.fret) / 12), t);
+      src.playbackRate.exponentialRampToValueAtTime(rate, t + 0.09);
+    } else src.playbackRate.value = rate;
+    if (n.legato || n.slide) {
+      // hammer-ons, pull-offs and slides have no pick attack: quieter, and eased in
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.025);
+    } else g.gain.value = 0.5;
+    src.connect(g); g.connect(guitarGain); src.start(t);
     damp(n.line, t); voices[n.line] = { src: src, g: g };
   }
   function damp(key, t) {
@@ -1046,7 +1330,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var o = ctx.createOscillator(), g = ctx.createGain();
     o.type = "square"; o.frequency.value = accent ? 1600 : 1100;
     g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.06);
+    o.connect(g); g.connect(clickGain); o.start(t); o.stop(t + 0.06);
   }
 
   /* ----- transport ----- */
@@ -1070,7 +1354,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var lat = Math.min(0.4, ctx.outputLatency || 0);
     while (vq.length && vq[0].t + lat <= ctx.currentTime) {
       var e = vq.shift();
-      if (e.i < 0) { playing = false; pos = 0; shownItem = -1; playBtn.textContent = "Play"; return; }
+      if (e.i < 0) { playing = false; pos = 0; shownItem = -1; playBtn.textContent = "Play"; if (hooks.pause) hooks.pause(true); return; }
       show(e.i, true);
     }
     requestAnimationFrame(frame);
@@ -1089,6 +1373,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     ensureAudio();
     if (pos >= items.length) pos = 0;
     playing = true; playBtn.textContent = "Pause"; vq = [];
+    if (hooks.play) hooks.play();
     var t = ctx.currentTime + 0.08;
     if ($("countin").checked) { var beat = 60 / +bpmEl.value, n = countInBeats(); for (var i = 0; i < n; i++) click(t + i * beat, i === 0); t += n * beat; }
     nextTime = t;
@@ -1100,6 +1385,30 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     clearInterval(timer); timer = null; vq = [];
     if (ctx) Object.keys(voices).forEach(function (k) { damp(k, ctx.currentTime); });
     if (shownItem >= 0) pos = shownItem;
+    if (hooks.pause) hooks.pause(false);
+  }
+  // tempo: the slider is in BPM; when the page states a tempo, it is also shown as a percentage of that
+  function showTempo() {
+    var v = +bpmEl.value;
+    $("bpmv").textContent = v + " BPM" + (writtenTempo ? " \u00b7 " + Math.round(v / writtenTempo * 100) + "%" : "");
+    $("pctbtns").hidden = !writtenTempo;
+  }
+  function setTempo(v) { bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, Math.round(v * 2) / 2)); showTempo(); if (hooks.changed) hooks.changed(); }
+  function barBeats() {
+    if (mode === "pdf") return barList.map(function (b) { return b.beat; });
+    var div = +divEl.value, out = [];
+    steps.forEach(function (st, i) { if (st.sinceBar === 0) out.push(i / div); });
+    return out;
+  }
+  // dir 1: next bar. dir -1: start of this bar, or the bar before if already there
+  function jumpBar(dir) {
+    var bars = barBeats(), i, target = null;
+    if (!bars.length || !items.length) return;
+    var cur = items[Math.min(items.length - 1, Math.max(0, shownItem >= 0 ? shownItem : pos))].beat;
+    if (dir > 0) { for (i = 0; i < bars.length; i++) if (bars[i] > cur + 1e-6) { target = bars[i]; break; } }
+    else { for (i = bars.length - 1; i >= 0; i--) if (bars[i] < cur - (playing ? 1 : 1e-6)) { target = bars[i]; break; } if (target === null) target = bars[0]; }
+    if (target === null) return;
+    for (i = 0; i < items.length; i++) if (items[i].vis >= 0 && items[i].beat >= target - 1e-6) { seek(i); return; }
   }
   function firstVis() { for (var i = 0; i < items.length; i++) if (items[i].vis >= 0) return i; return 0; }
   function toStart() { pause(); pos = 0; if (items.length) show(firstVis(), false); window.scrollTo({ top: 0 }); }
@@ -1121,7 +1430,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   function loadText(text, name) {
     var res = parseTab(text);
     if (!res.length) return false;
-    loadId++; reset(); blocks = res; setMode("text"); renderText(); buildSchedule(); show(firstVis(), false);
+    loadId++; reset(); blocks = res; setMode("text"); writtenTempo = null; showTempo(); renderText(); buildSchedule(); show(firstVis(), false);
     var notes = blocks.reduce(function (a, b) { return a + b.count; }, 0);
     setStatus(name + ": " + blocks.length + (blocks.length === 1 ? " tab staff, " : " tab staves, ") + notes + " notes.");
     return true;
@@ -1133,7 +1442,9 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     if (!res) return false;
     var id = ++loadId;
     reset(); eng = res; beatsEl.value = "0"; $("reps").checked = true; setMode("pdf");
-    if (eng.info.tempo) { bpmEl.value = Math.max(30, Math.min(220, eng.info.tempo)); $("bpmv").textContent = bpmEl.value + " BPM"; }
+    writtenTempo = eng.info.tempo || null;
+    if (writtenTempo) bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, writtenTempo));
+    showTempo();
     buildSchedule();
     var top = 0; pdfEvents.forEach(function (e) { e.notes.forEach(function (n) { if (n.fret > top) top = n.fret; }); });
     buildBoard(eng.nStr, eng.tuning, top);
@@ -1177,39 +1488,55 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     return out.join("\n");
   }
   async function handleFile(file, shown) {
-    if (!file) return;
+    if (!file) return false;
     var label = shown || file.name;
     if (!shown) $("nowplaying").textContent = file.name.replace(/\.(pdf|txt)$/i, "");
     var isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
     try {
       if (!isPdf) {
         var text = await file.text(); ta.value = text;
-        if (!loadText(text, label)) { $("editor").open = true; setStatus("No tab lines found in " + label + ". Tab lines look like e|--0--2--3--|.", true); }
-        return;
+        if (!loadText(text, label)) { $("editor").open = true; setStatus("No tab lines found in " + label + ". Tab lines look like e|--0--2--3--|.", true); return false; }
+        return true;
       }
-      if (!window.pdfjsLib) { setStatus("The PDF reader didn't load. Check your connection and reload the page, or paste the tab as text instead.", true); return; }
+      if (!window.pdfjsLib) { setStatus("The PDF reader didn't load. Check your connection and reload the page, or paste the tab as text instead.", true); return false; }
       setStatus("Reading " + label + "…");
       var doc = await pdfjsLib.getDocument({ data: await file.arrayBuffer(), disableFontFace: true }).promise;
       var t = await pdfToText(doc);
-      if (loadText(t, label)) { ta.value = t; return; }
-      if (await loadEngraved(doc, label)) return;
+      if (loadText(t, label)) { ta.value = t; return true; }
+      if (await loadEngraved(doc, label)) return true;
       $("editor").open = true;
       setStatus("No tab found in " + label + ". It looks like a scanned image, which this player can't read. If you can get the tab as text, paste it below.", true);
     } catch (err) {
       console.error(err);
       setStatus("Couldn't read " + label + ". The file may be damaged or password-protected.", true);
     }
+    return false;
   }
 
   /* ----- wiring ----- */
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   playBtn.addEventListener("click", function () { playing ? pause() : play(); });
   $("stop").addEventListener("click", toStart);
-  bpmEl.addEventListener("input", function () { $("bpmv").textContent = bpmEl.value + " BPM"; });
-  divEl.addEventListener("change", reschedule);
-  beatsEl.addEventListener("change", reschedule);
-  $("reps").addEventListener("change", reschedule);
-  $("file").addEventListener("change", function (e) { handleFile(e.target.files[0]); e.target.value = ""; });
+  var changed = function () { if (hooks.changed) hooks.changed(); };
+  bpmEl.addEventListener("input", showTempo);
+  bpmEl.addEventListener("change", changed);
+  divEl.addEventListener("change", function () { reschedule(); changed(); });
+  beatsEl.addEventListener("change", function () { reschedule(); changed(); });
+  $("reps").addEventListener("change", function () { reschedule(); changed(); });
+  $("pctbtns").addEventListener("click", function (e) { var p = e.target.getAttribute("data-pct"); if (p && writtenTempo) setTempo(writtenTempo * p / 100); });
+  // sound: mute and the two volume sliders are remembered on this device
+  var prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem("tabplayer-sound") || "{}") || {}; } catch (e) {}
+  if (prefs.volg >= 0) $("volg").value = prefs.volg;
+  if (prefs.volm >= 0) $("volm").value = prefs.volm;
+  var savePrefs = function () { try { localStorage.setItem("tabplayer-sound", JSON.stringify({ volg: +$("volg").value, volm: +$("volm").value })); } catch (e) {} };
+  $("volg").addEventListener("input", function () { applyVolumes(); savePrefs(); });
+  $("volm").addEventListener("input", function () { applyVolumes(); savePrefs(); });
+  $("muteg").addEventListener("change", function () {
+    if ($("muteg").checked && !$("metro").checked) $("metro").checked = true;   // silent practice still needs a pulse
+    applyVolumes();
+  });
+  $("file").addEventListener("change", function (e) { if (e.target.files[0]) openLocal(e.target.files[0]); e.target.value = ""; });
   $("loadtext").addEventListener("click", function () {
     if (!loadText(ta.value, "Pasted tab")) setStatus("No tab lines found in that text. Each string needs its own line, like e|--0--2--3--|, with at least four strings.", true);
   });
@@ -1217,36 +1544,223 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   document.addEventListener("drop", function (e) {
     e.preventDefault();
     var fs = e.dataTransfer.files; if (!fs || !fs.length) return;
-    if (!$("view-lib").hidden && isMember) addFiles(fs); else if (!$("view-player").hidden) handleFile(fs[0]);
+    if (!$("view-lib").hidden && isMember) addFiles(fs); else if (!$("view-player").hidden) openLocal(fs[0]);
   });
+  // keyboard: space play/pause, arrows move by bar, Home back to start, + and - tempo, L loop, M metronome, G mute guitar
   document.addEventListener("keydown", function (e) {
-    if (e.code !== "Space" || $("view-player").hidden || /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
-    e.preventDefault(); playing ? pause() : play();
+    var tag = e.target.tagName, flip = function (id) { var c = $(id); c.checked = !c.checked; c.dispatchEvent(new Event("change")); };
+    if ($("view-player").hidden || e.ctrlKey || e.metaKey || e.altKey || tag === "TEXTAREA" || tag === "SELECT" || (tag === "INPUT" && e.target.type !== "checkbox")) return;
+    if (e.code === "Space") { if (tag === "INPUT" || tag === "BUTTON" || tag === "SUMMARY") return; e.preventDefault(); playing ? pause() : play(); return; }
+    switch (e.key) {
+      case "ArrowRight": jumpBar(1); break;
+      case "ArrowLeft": jumpBar(-1); break;
+      case "Home": toStart(); break;
+      case "+": case "=": setTempo(+bpmEl.value + 5); break;
+      case "-": case "_": setTempo(+bpmEl.value - 5); break;
+      case "l": case "L": flip("loop"); break;
+      case "m": case "M": flip("metro"); break;
+      case "g": case "G": flip("muteg"); break;
+      default: return;
+    }
+    e.preventDefault();
   });
-  /* ----- shared library (Supabase) ----- */
+  /* ----- tuner: listens through the microphone and points a needle at the note it hears ----- */
+  var NOTE_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+  var tu = { ctx: null, stream: null, an: null, buf: null, timer: null, raf: 0, on: false, strings: false, lock: -1, hist: [], heard: 0, angle: 0, target: 0, built: false };
+
+  // Pitch of a short stretch of sound, in Hz, or null if there is no clear note (YIN method).
+  function detectPitch(x, sr) {
+    var n = x.length, W = Math.min(2048, n >> 1), maxLag = Math.min(n - W - 1, Math.floor(sr / 55)), minLag = Math.max(2, Math.floor(sr / 1400));
+    var i, j, tau, rms = 0;
+    for (i = 0; i < n; i++) rms += x[i] * x[i];
+    if (Math.sqrt(rms / n) < 0.008) return null;
+    var d = new Float32Array(maxLag + 2), run = 0, best = -1;
+    d[0] = 1;
+    for (tau = 1; tau <= maxLag + 1; tau++) {
+      var s = 0;
+      for (j = 0; j < W; j++) { var df = x[j] - x[j + tau]; s += df * df; }
+      run += s; d[tau] = run > 0 ? s * tau / run : 1;
+    }
+    for (tau = minLag; tau <= maxLag; tau++) if (d[tau] < 0.12) { while (tau < maxLag && d[tau + 1] < d[tau]) tau++; best = tau; break; }
+    if (best < 0) return null;
+    var a = d[best - 1], b = d[best], c = d[best + 1], den = a - 2 * b + c, shift = den ? (a - c) / (2 * den) : 0;
+    if (!(shift > -1 && shift < 1)) shift = 0;
+    return sr / (best + shift);
+  }
+  function tunerTargets() {
+    var v = $("tu-tuning").value;
+    if (v === "dropd") return [64, 59, 55, 50, 45, 38];
+    if (v === "tab") { var t = mode === "pdf" && eng ? eng.tuning : blocks[0] && blocks[0].tuning; if (t && t.length) return t.slice(); }
+    return [64, 59, 55, 50, 45, 40];
+  }
+  function noteLabel(m) { return NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+  function tunerBuild() {
+    if (tu.built) return; tu.built = true;
+    var s = ['<svg viewBox="0 0 300 300" role="img" aria-label="Dial with the twelve notes; the needle points at the note being played">'], i, a, r1, r2, sn, cs;
+    s.push('<circle class="face" cx="150" cy="150" r="144"/>');
+    for (i = 0; i < 60; i++) {
+      a = i * 6 * Math.PI / 180; sn = Math.sin(a); cs = -Math.cos(a); r2 = 138; r1 = i % 5 === 0 ? 122 : 130;
+      s.push('<line class="' + (i % 5 === 0 ? "tk big" : "tk") + '" x1="' + (150 + r1 * sn).toFixed(1) + '" y1="' + (150 + r1 * cs).toFixed(1) + '" x2="' + (150 + r2 * sn).toFixed(1) + '" y2="' + (150 + r2 * cs).toFixed(1) + '"/>');
+    }
+    for (i = 0; i < 12; i++) {
+      a = i * 30 * Math.PI / 180;
+      s.push('<text class="nl" id="tu-n' + i + '" x="' + (150 + 102 * Math.sin(a)).toFixed(1) + '" y="' + (150 - 102 * Math.cos(a) + 7).toFixed(1) + '" text-anchor="middle">' + NOTE_NAMES[i] + "</text>");
+    }
+    s.push('<g id="tu-needle"><line class="needle" x1="150" y1="150" x2="150" y2="70"/><circle class="tip" cx="150" cy="20" r="6.5"/><circle class="hub" cx="150" cy="150" r="13"/></g></svg>');
+    $("tu-dial").innerHTML = s.join("");
+    var o = $("tu-octs"); o.textContent = "";
+    var cap = el("span", "meta"); cap.textContent = "Octave"; o.appendChild(cap);
+    for (i = 0; i <= 8; i++) { var p = el("span", "oct"); p.id = "tu-o" + i; p.textContent = i; o.appendChild(p); }
+  }
+  function tunerStrings() {
+    var box = $("tu-strings"), tg = tunerTargets();
+    box.textContent = ""; box.hidden = $("tu-tuningctl").hidden = !tu.strings;
+    if (tu.lock >= tg.length) tu.lock = -1;
+    var auto = btn("Auto", "tag" + (tu.lock < 0 ? " on" : ""), function () { tu.lock = -1; tunerStrings(); });
+    auto.id = "tu-s-auto"; box.appendChild(auto);
+    tg.forEach(function (m, i) {
+      var b = btn((i + 1) + " · " + noteLabel(m), "tag" + (tu.lock === i ? " on" : ""), function () { tu.lock = tu.lock === i ? -1 : i; tunerStrings(); });
+      b.id = "tu-s" + i; box.appendChild(b);
+    });
+    var opt = $("tu-tuning").querySelector('option[value="tab"]');
+    opt.disabled = !(mode === "pdf" ? eng : blocks.length); opt.textContent = "The tab that is open" + (opt.disabled ? " (none)" : "");
+    if (opt.disabled && $("tu-tuning").value === "tab") $("tu-tuning").value = "std";
+  }
+  function tunerIdle(text) {
+    $("tu-name").textContent = "–"; $("tu-oct").textContent = ""; $("tu-detail").textContent = "";
+    $("tu-hint").textContent = text; $("tu-hint").className = "";
+    $("tu-flat").classList.remove("on"); $("tu-sharp").classList.remove("on");
+    for (var i = 0; i <= 8; i++) $("tu-o" + i).classList.remove("on");
+    for (i = 0; i < 12; i++) $("tu-n" + i).classList.remove("on");
+    Array.prototype.forEach.call($("tu-strings").querySelectorAll(".near"), function (b) { b.classList.remove("near"); });
+    tu.target = 0;
+  }
+  // m: the pitch heard, as a (fractional) MIDI note number
+  function tunerShow(m, hz) {
+    var near = Math.round(m), which = -1, i;
+    if (tu.strings) {
+      var tg = tunerTargets(); which = tu.lock;
+      if (which < 0) { var bd = 1e9; tg.forEach(function (t, k) { if (Math.abs(t - m) < bd) { bd = Math.abs(t - m); which = k; } }); }
+      near = tg[which];
+    }
+    var cents = Math.round((m - near) * 100), ok = Math.abs(cents) <= 5, oct = Math.floor(near / 12) - 1, pc = ((near % 12) + 12) % 12;
+    $("tu-name").textContent = NOTE_NAMES[pc]; $("tu-oct").textContent = oct;
+    $("tu-flat").classList.toggle("on", cents < -5); $("tu-sharp").classList.toggle("on", cents > 5);
+    var hint = $("tu-hint");
+    hint.textContent = (which >= 0 ? "String " + (which + 1) + ": " : "") + (ok ? "In tune" : cents < 0 ? "Tune up" : "Tune down");
+    hint.className = ok ? "ok" : "";
+    $("tu-detail").textContent = hz.toFixed(1) + " Hz · " + (cents > 0 ? "+" : "") + cents + " cents";
+    for (i = 0; i <= 8; i++) $("tu-o" + i).classList.toggle("on", i === oct);
+    for (i = 0; i < 12; i++) $("tu-n" + i).classList.toggle("on", i === pc);
+    Array.prototype.forEach.call($("tu-strings").querySelectorAll(".tag"), function (b) { b.classList.toggle("near", b.id === "tu-s" + which); });
+    tu.target = (((m % 12) + 12) % 12) * 30;
+  }
+  function tunerListen() {
+    if (!tu.on) return;
+    tu.an.getFloatTimeDomainData(tu.buf);
+    var hz = detectPitch(tu.buf, tu.ctx.sampleRate), now = performance.now();
+    if (hz && hz > 50 && hz < 1500) {
+      var m = 69 + 12 * Math.log(hz / 440) / Math.LN2;
+      tu.hist.push(m); if (tu.hist.length > 5) tu.hist.shift();
+      var sorted = tu.hist.slice().sort(function (a, b) { return a - b; }), med = sorted[sorted.length >> 1];
+      // ignore a reading that jumps away from the last few (an octave slip while the string decays)
+      if (tu.hist.length < 3 || Math.abs(m - med) < 0.7) { tu.heard = now; tunerShow(med, 440 * Math.pow(2, (med - 69) / 12)); }
+    } else if (now - tu.heard > 1500 && tu.heard) { tu.heard = 0; tu.hist = []; tunerIdle("Play one string."); }
+  }
+  function tunerDraw() {
+    if (!tu.on) return;
+    var diff = ((tu.target - tu.angle + 540) % 360) - 180;   // shortest way round the dial
+    tu.angle = (tu.angle + diff * 0.25 + 360) % 360;
+    $("tu-needle").setAttribute("transform", "rotate(" + tu.angle.toFixed(2) + " 150 150)");
+    tu.raf = requestAnimationFrame(tunerDraw);
+  }
+  async function tunerStart() {
+    var msg = $("tu-msg");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg.textContent = "This browser can't use the microphone here."; msg.className = "err"; return; }
+    msg.textContent = ""; msg.className = "muted";
+    try {
+      tu.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (err) {
+      msg.textContent = err && (err.name === "NotAllowedError" || err.name === "SecurityError") ? "Microphone access was blocked. Allow it for this site in your browser, then try again." : "No microphone was found.";
+      msg.className = "err"; return;
+    }
+    if ($("view-tuner").hidden) { tu.stream.getTracks().forEach(function (t) { t.stop(); }); tu.stream = null; return; }
+    tu.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    tu.an = tu.ctx.createAnalyser(); tu.an.fftSize = 4096; tu.buf = new Float32Array(tu.an.fftSize);
+    tu.ctx.createMediaStreamSource(tu.stream).connect(tu.an);
+    tu.on = true; tu.hist = []; tu.heard = 0;
+    $("tu-start").textContent = "Stop tuner"; tunerIdle("Play one string.");
+    tu.timer = setInterval(tunerListen, 70); tu.raf = requestAnimationFrame(tunerDraw);
+  }
+  function tunerStop() {
+    if (!tu.on && !tu.stream) return;
+    tu.on = false; clearInterval(tu.timer); cancelAnimationFrame(tu.raf);
+    if (tu.stream) tu.stream.getTracks().forEach(function (t) { t.stop(); });
+    if (tu.ctx) tu.ctx.close();
+    tu.stream = tu.ctx = tu.an = null;
+    $("tu-start").textContent = "Start tuner";
+    if (tu.built) { tunerIdle("Start the tuner and play one string."); $("tu-needle").setAttribute("transform", "rotate(0 150 150)"); tu.angle = 0; }
+  }
+  function tunerOpen() { tunerBuild(); tunerStrings(); if (!tu.on) tunerIdle("Start the tuner and play one string."); }
+  function tunerMode(strings) {
+    tu.strings = strings; tu.hist = [];
+    $("tu-chrom").classList.toggle("on", !strings); $("tu-str").classList.toggle("on", strings);
+    $("tu-chrom").setAttribute("aria-pressed", String(!strings)); $("tu-str").setAttribute("aria-pressed", String(strings));
+    tunerStrings();
+  }
+  $("tu-start").addEventListener("click", function () { tu.on ? tunerStop() : tunerStart(); });
+  $("tu-chrom").addEventListener("click", function () { tunerMode(false); });
+  $("tu-str").addEventListener("click", function () { tunerMode(true); });
+  $("tu-tuning").addEventListener("change", function () { tu.lock = -1; tunerStrings(); });
+
+  /* ----- account, shared library and each person's own data (Supabase) ----- */
   var SUPABASE_URL = "https://koowtibwvweidpkmhkms.supabase.co";
   var SUPABASE_KEY = "sb_publishable_kFk0KHd1W5uowCg8lMyvLA_BQBs7pXu";   // publishable key: meant to be public, the access rules protect the data
-  var MAX_BYTES = 20 * 1024 * 1024;
-  var sb = null, session = null, userId = null, booted = false, isMember = false, tabsData = [], editingId = null, deletingId = null, openSeq = 0, blobs = new Map();
+  var MAX_BYTES = 20 * 1024 * 1024, FREE_BYTES = 1024 * 1024 * 1024, TRASH_DAYS = 30, DAY_MS = 864e5;
+  var VIEWS = ["auth", "lib", "trash", "player", "practice", "tuner", "members"];
+  var sb = null, session = null, userId = null, booted = false, isMember = false;
+  var tabsData = [], stateBy = {}, editingId = null, tagFilter = null, purgeAsk = null, removeAsk = null, openSeq = 0, blobs = new Map();
+  var currentTab = null, applying = false, saveTimer = null, toastTimer = null, pract = { since: 0, acc: 0, timer: null };
   var listEl = $("tablist"), libMsg = $("libmsg");
 
-  function view(name) {
-    ["auth", "lib", "player"].forEach(function (v) { $("view-" + v).hidden = v !== name; });
-    if (name !== "player") pause();
-    $("back").textContent = session ? "\u2190 Library" : "\u2190 Sign in";
-    window.scrollTo({ top: 0 });
+  /* small helpers */
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function localDay(d) { d = d || new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function fmtDur(s) {
+    s = Math.round(s || 0);
+    if (s < 60) return s + " s";
+    var m = Math.round(s / 60);
+    return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + pad2(m % 60) + " min";
+  }
+  function fmtBytes(b) { return b < 1048576 ? Math.max(1, Math.round(b / 1024)) + " KB" : (b / 1048576).toFixed(b < 10485760 ? 1 : 0) + " MB"; }
+  function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+  function daysAgo(iso) { var d = new Date(iso), n = new Date(); return Math.round((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / DAY_MS); }
+  function relDay(iso) { if (!iso) return ""; var n = daysAgo(iso); return n <= 0 ? "today" : n === 1 ? "yesterday" : n < 30 ? n + " days ago" : fmtDate(iso); }
+  function btn(text, cls, fn) { var b = el("button", cls); b.type = "button"; b.textContent = text; b.addEventListener("click", fn); return b; }
+  function st(t) { return stateBy[t.id] || {}; }
+  function ownState(t) { return stateBy[t.id] || (stateBy[t.id] = { tab_id: t.id, favorite: false, settings: {}, position_beat: 0, seconds_practiced: 0, last_played_at: null }); }
+  function active() { return tabsData.filter(function (t) { return !t.deleted_at; }); }
+  function trashed() { return tabsData.filter(function (t) { return !!t.deleted_at; }); }
+  function setLib(msg, isErr) { libMsg.textContent = msg || ""; libMsg.className = isErr ? "err" : "muted"; }
+  function hideToast() { $("toast").hidden = true; clearTimeout(toastTimer); }
+  function toast(text, label, fn) {
+    $("toasttext").textContent = text;
+    var b = $("toastbtn"); b.hidden = !label; b.textContent = label || "";
+    b.onclick = function () { hideToast(); if (fn) fn(); };
+    $("toast").hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 9000);
   }
   function explain(err) {
-    var m = (err && err.message) || String(err || "");
-    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Couldn't reach the library. Check your connection. If nobody has used it for a week, Supabase pauses the project: restore it from the Supabase dashboard.";
+    var m = (err && err.message) || String(err || ""), code = (err && err.code) || "";
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Couldn't reach the library. Check your connection. If nobody has used it for a week, Supabase pauses the project: resume it from the Supabase dashboard.";
     if (/Invalid login credentials/i.test(m)) return "Wrong email or password.";
     if (/Email not confirmed/i.test(m)) return "This account's email hasn't been confirmed yet.";
-    if (/row-level security|permission denied|not authorized|unauthorized/i.test(m)) return "This account isn't allowed to do that. It may not be on the library's member list yet.";
+    if (code === "42703" || code === "PGRST202" || code === "PGRST204" || code === "PGRST205" || /does not exist|Could not find the (function|table)|schema cache/i.test(m)) return "The library's database hasn't been updated for this version of the app yet.";
+    if (/Only the library owner|The library is full|The limit must be|The owner cannot/i.test(m)) return m;
+    if (/row-level security|permission denied|not authorized|unauthorized/i.test(m)) return "This account isn't allowed to do that. It may not be on the library's member list.";
     if (/maximum allowed size|too large/i.test(m)) return "That file is larger than the 20 MB limit.";
     if (/mime type/i.test(m)) return "Only PDF and plain-text files can be saved.";
     return m || "Something went wrong.";
   }
-  function setLib(msg, isErr) { libMsg.textContent = msg || ""; libMsg.className = isErr ? "err" : "muted"; }
   function uuid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     var b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
@@ -1258,125 +1772,445 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     return fn.replace(/\.(pdf|txt)$/i, "").replace(/^\d{5,}[-_ ]+/, "").replace(/[_]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) || "Untitled";
   }
 
+  /* screens */
+  function view(name) {
+    VIEWS.forEach(function (v) { $("view-" + v).hidden = v !== name; });
+    if (name !== "player") pause();
+    if (name !== "tuner") tunerStop();
+    $("back").textContent = session ? "← Library" : "← Sign in";
+    var home = name === "auth" || name === "lib" || name === "trash" || name === "player";
+    ["lib", "practice", "tuner", "members"].forEach(function (k) { $("nav-" + k).classList.toggle("on", k === "lib" ? home : k === name); });
+    window.scrollTo({ top: 0 });
+    if (name === "lib") renderLibrary();
+    else if (name === "trash") renderTrash();
+    else if (name === "practice") loadPractice();
+    else if (name === "members") loadMembers();
+    else if (name === "tuner") tunerOpen();
+  }
+  function showExample() { ta.value = SAMPLE; loadText(SAMPLE, "Example tab"); setStatus("Example tab loaded. Open a file to replace it."); $("nowplaying").textContent = "Example tab"; }
+  function openLocal(file) { leaveTab(); view("player"); handleFile(file); }
+  function leaveTab() { if (currentTab) { tickPractice(); flushPractice(true); } currentTab = null; }
+
   function onSession(s) {
     session = s || null;
     var id = s ? s.user.id : null;
     $("account").hidden = !s; $("pwform").hidden = true;
     if (s) $("who").textContent = s.user.email || "";
+    $("nav-lib").textContent = s ? "Library" : "Sign in";
     if (booted && id === userId) return;  // token refreshes and tab re-focus fire this too: nothing changed
-    booted = true; userId = id; blobs.clear(); tabsData = []; editingId = deletingId = null;
+    booted = true; userId = id; blobs.clear(); tabsData = []; stateBy = {}; editingId = tagFilter = null; currentTab = null; isMember = false;
+    $("nav-practice").hidden = $("nav-members").hidden = true;
     if (s) { view("lib"); loadLibrary(); }
-    else {   // signed out: nothing from the library stays on screen
-      $("password").value = ""; ta.value = SAMPLE; loadText(SAMPLE, "Example tab"); setStatus("Example tab loaded. Open a file to replace it."); $("nowplaying").textContent = "Example tab";
-      view("auth");
-    }
+    else { $("password").value = ""; showExample(); view("auth"); }   // signed out: nothing from the library stays on screen
   }
+
+  /* library */
   async function loadLibrary() {
-    setLib("Loading\u2026"); renderList();
+    setLib("Loading…"); renderLibrary();
     try {
       var mem = await sb.from("members").select("user_id").limit(1);
       if (mem.error) throw mem.error;
       isMember = mem.data.length > 0;
-      $("addlabel").hidden = !isMember; $("search").hidden = !isMember;
-      if (!isMember) { tabsData = []; renderList(); setLib("You're signed in, but this account isn't on the library's member list. Only the first accounts created are approved automatically (two by default). Whoever set the library up can raise that limit in Supabase."); return; }
-      var res = await sb.from("tabs").select("id,name,path,size_bytes,uploaded_by_email,created_at").order("name");
-      if (res.error) throw res.error;
-      tabsData = res.data; setLib(""); renderList();
+      $("view-lib").classList.toggle("nomember", !isMember);
+      $("nav-practice").hidden = $("nav-members").hidden = !isMember;
+      if (!isMember) { tabsData = []; renderLibrary(); setLib("You're signed in, but this account isn't on the library's member list. The library's owner can approve it from the Members screen."); return; }
+      var res = await Promise.all([
+        sb.from("tabs").select("id,name,artist,tags,path,size_bytes,uploaded_by_email,created_at,deleted_at,deleted_by_email"),
+        sb.from("tab_state").select("tab_id,favorite,settings,position_beat,seconds_practiced,last_played_at")
+      ]);
+      if (res[0].error) throw res[0].error;
+      if (res[1].error) throw res[1].error;
+      tabsData = res[0].data; stateBy = {};
+      res[1].data.forEach(function (r) { stateBy[r.tab_id] = r; });
+      setLib(""); renderLibrary(); emptyOldTrash();
     } catch (err) { setLib(explain(err), true); }
   }
+  function renderLibrary() { renderRecent(); renderTags(); renderList(); renderFoot(); }
+  function renderRecent() {
+    var rows = active().filter(function (t) { return st(t).last_played_at; })
+      .sort(function (a, b) { return st(b).last_played_at < st(a).last_played_at ? -1 : 1; }).slice(0, 4);
+    var box = $("recentlist"); box.textContent = ""; $("recent").hidden = !rows.length || !isMember;
+    rows.forEach(function (t) {
+      var b = btn("", "recentitem", function () { openTab(t); }), n = el("span", "rname"), m = el("span", "meta");
+      n.textContent = t.name; m.textContent = relDay(st(t).last_played_at) + " · " + fmtDur(st(t).seconds_practiced);
+      b.appendChild(n); b.appendChild(m); box.appendChild(b);
+    });
+  }
+  function renderTags() {
+    var seen = {}, tags = [];
+    active().forEach(function (t) { (t.tags || []).forEach(function (g) { if (!seen[g.toLowerCase()]) { seen[g.toLowerCase()] = 1; tags.push(g); } }); });
+    tags.sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: "base" }); });
+    if (tagFilter && !seen[tagFilter.toLowerCase()]) tagFilter = null;
+    var bar = $("tagbar"); bar.textContent = ""; bar.hidden = !tags.length || !isMember;
+    if (!tags.length) return;
+    var chip = function (label, value) {
+      var b = btn(label, "tag" + ((value === null ? !tagFilter : tagFilter && tagFilter.toLowerCase() === value.toLowerCase()) ? " on" : ""), function () { tagFilter = value; renderLibrary(); });
+      bar.appendChild(b);
+    };
+    chip("All", null); tags.forEach(function (g) { chip(g, g); });
+  }
   function renderList() {
-    var q = $("search").value.trim().toLowerCase();
-    var rows = tabsData.filter(function (t) { return !q || t.name.toLowerCase().indexOf(q) >= 0; })
-      .sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }); });
+    var q = $("search").value.trim().toLowerCase(), sort = $("sort").value, fav = $("favonly").checked, all = active();
+    var byName = function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }); };
+    var rows = all.filter(function (t) {
+      if (fav && !st(t).favorite) return false;
+      if (tagFilter && !(t.tags || []).some(function (g) { return g.toLowerCase() === tagFilter.toLowerCase(); })) return false;
+      return !q || (t.name + "\n" + (t.artist || "") + "\n" + (t.tags || []).join("\n")).toLowerCase().indexOf(q) >= 0;
+    }).sort(function (a, b) {
+      if (sort === "artist") { var x = (a.artist || "￿").localeCompare(b.artist || "￿", undefined, { sensitivity: "base" }); return x || byName(a, b); }
+      if (sort === "new") return a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : byName(a, b);
+      if (sort === "recent") { var la = st(a).last_played_at || "", lb = st(b).last_played_at || ""; return la < lb ? 1 : la > lb ? -1 : byName(a, b); }
+      if (sort === "most") return (st(b).seconds_practiced || 0) - (st(a).seconds_practiced || 0) || byName(a, b);
+      return byName(a, b);
+    });
     listEl.textContent = "";
     if (!rows.length && isMember && !libMsg.textContent) {
-      var e = el("li", "empty"); e.textContent = tabsData.length ? "No tabs match that search." : "No tabs saved yet. Add a PDF and it shows up here for everyone on the member list."; listEl.appendChild(e); return;
+      var e = el("li", "empty");
+      e.textContent = !all.length ? "No tabs saved yet. Add a PDF and it shows up here for everyone on the member list." : fav && !q && !tagFilter ? "No favorites yet. Use the star next to a tab to mark it." : "No tabs match.";
+      listEl.appendChild(e); return;
     }
     rows.forEach(function (t) {
-      var li = el("li", "tabrow"), main = el("div", "tabmain"), acts = el("div", "tabacts");
-      var btn = function (text, cls, fn) { var b = el("button", cls); b.type = "button"; b.textContent = text; b.addEventListener("click", fn); return b; };
+      var li = el("li", "tabrow"), main = el("div", "tabmain"), acts = el("div", "tabacts"), s = st(t);
       if (editingId === t.id) {
-        var inp = el("input"); inp.type = "text"; inp.value = t.name; inp.maxLength = 200; inp.id = "rename-" + t.id; inp.setAttribute("aria-label", "Tab name");
-        var save = function () { renameTab(t, inp.value); };
-        inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter") save(); if (ev.key === "Escape") { editingId = null; renderList(); } });
-        main.appendChild(inp);
-        acts.appendChild(btn("Save", "primary", save)); acts.appendChild(btn("Cancel", "", function () { editingId = null; renderList(); }));
-        setTimeout(function () { inp.focus(); inp.select(); }, 0);
-      } else if (deletingId === t.id) {
-        var warn = el("span", "warn"); warn.textContent = "Delete \u201c" + t.name + "\u201d for everyone?"; main.appendChild(warn);
-        acts.appendChild(btn("Delete", "danger", function () { deleteTab(t); })); acts.appendChild(btn("Cancel", "", function () { deletingId = null; renderList(); }));
-      } else {
-        main.appendChild(btn(t.name, "open", function () { openTab(t); }));
-        var meta = el("span", "meta"), by = (t.uploaded_by_email || "").split("@")[0], d = new Date(t.created_at);
-        meta.textContent = (by ? "Added by " + by + " \u00b7 " : "") + (isNaN(d) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }));
-        main.appendChild(meta);
-        acts.appendChild(btn("Rename", "", function () { editingId = t.id; deletingId = null; renderList(); }));
-        acts.appendChild(btn("Delete", "", function () { deletingId = t.id; editingId = null; renderList(); }));
+        var f = el("form", "editform"), mk = function (label, value, max, ph) {
+          var l = el("label"), i = el("input"); l.textContent = label; i.type = "text"; i.value = value; i.maxLength = max; i.placeholder = ph || ""; i.id = "edit-" + label.toLowerCase() + "-" + t.id; l.htmlFor = i.id;
+          f.appendChild(l); f.appendChild(i); return i;
+        };
+        var iName = mk("Name", t.name, 200), iArtist = mk("Artist", t.artist || "", 200), iTags = mk("Tags", (t.tags || []).join(", "), 300, "fingerstyle, easy, to learn");
+        var bar = el("div", "tabacts"), save = el("button", "primary"); save.type = "submit"; save.textContent = "Save";
+        bar.appendChild(save); bar.appendChild(btn("Cancel", "", function () { editingId = null; renderList(); }));
+        f.appendChild(bar);
+        f.addEventListener("submit", function (ev) { ev.preventDefault(); saveEdit(t, iName.value, iArtist.value, iTags.value); });
+        f.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { editingId = null; renderList(); } });
+        li.appendChild(f); listEl.appendChild(li);
+        setTimeout(function () { iName.focus(); iName.select(); }, 0);
+        return;
       }
-      li.appendChild(main); li.appendChild(acts); listEl.appendChild(li);
+      var star = btn(s.favorite ? "★" : "☆", "star" + (s.favorite ? " on" : ""), function () { toggleFav(t); });
+      star.setAttribute("aria-pressed", s.favorite ? "true" : "false"); star.setAttribute("aria-label", "Favorite"); star.title = s.favorite ? "Remove from favorites" : "Add to favorites";
+      main.appendChild(btn(t.name, "open", function () { openTab(t); }));
+      if (t.artist) { var ar = el("span", "artist"); ar.textContent = t.artist; main.appendChild(ar); }
+      if ((t.tags || []).length) {
+        var tg = el("span", "tags");
+        t.tags.forEach(function (g) { tg.appendChild(btn(g, "tag", function () { tagFilter = g; renderLibrary(); })); });
+        main.appendChild(tg);
+      }
+      var meta = el("span", "meta"), by = (t.uploaded_by_email || "").split("@")[0], bits = [];
+      if (by) bits.push("Added by " + by);
+      if (fmtDate(t.created_at)) bits.push(fmtDate(t.created_at));
+      if (s.seconds_practiced > 0) bits.push("practiced " + fmtDur(s.seconds_practiced));
+      if (s.last_played_at) bits.push("last played " + relDay(s.last_played_at));
+      meta.textContent = bits.join(" · "); main.appendChild(meta);
+      acts.appendChild(btn("Edit", "", function () { editingId = t.id; renderList(); }));
+      acts.appendChild(btn("Delete", "", function () { trashTab(t); }));
+      li.appendChild(star); li.appendChild(main); li.appendChild(acts); listEl.appendChild(li);
     });
+  }
+  function renderFoot() {
+    var total = 0, tr = trashed().length;
+    tabsData.forEach(function (t) { total += t.size_bytes || 0; });
+    $("libfoot").hidden = !isMember;
+    $("meterfill").style.width = Math.max(total ? 1 : 0, Math.min(100, total / FREE_BYTES * 100)) + "%";
+    $("metertext").textContent = fmtBytes(total) + " of 1 GB used" + (tr ? ", counting " + tr + " in the trash" : "");
+    $("trashbtn").textContent = "Trash (" + tr + ")";
+    $("backup").disabled = !active().length;
+  }
+
+  async function getBlob(t, keep) {
+    var blob = blobs.get(t.path);
+    if (!blob) {
+      var r = await sb.storage.from("tabs").download(t.path);
+      if (r.error) throw r.error;
+      blob = r.data; if (keep) blobs.set(t.path, blob);
+    }
+    return blob;
   }
   async function openTab(t) {
     var seq = ++openSeq;
-    view("player"); $("nowplaying").textContent = t.name; setStatus("Loading " + t.name + "\u2026");
+    leaveTab(); hideToast();
+    view("player"); $("nowplaying").textContent = t.name; setStatus("Loading " + t.name + "…");
     try {
-      var blob = blobs.get(t.path);
-      if (!blob) {
-        var r = await sb.storage.from("tabs").download(t.path);
-        if (r.error) throw r.error;
-        blob = r.data; blobs.set(t.path, blob);
-      }
+      var blob = await getBlob(t, true);
       if (seq !== openSeq) return;
       var txt = /\.txt$/i.test(t.path);
-      await handleFile(new File([blob], t.name + (txt ? ".txt" : ".pdf"), { type: txt ? "text/plain" : "application/pdf" }), t.name);
+      var ok = await handleFile(new File([blob], t.name + (txt ? ".txt" : ".pdf"), { type: txt ? "text/plain" : "application/pdf" }), t.name);
+      if (seq !== openSeq || !ok) return;
+      currentTab = t; applySaved(t);
     } catch (err) { if (seq === openSeq) setStatus("Couldn't open " + t.name + ". " + explain(err), true); }
   }
+  // your own tempo and options for this tab, and the bar you stopped in
+  function applySaved(t) {
+    var s = st(t), set = s.settings || {}, has = function (sel, v) { return Array.prototype.some.call(sel.options, function (o) { return o.value === String(v); }); };
+    applying = true;
+    if (set.bpm > 0) { bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, set.bpm)); showTempo(); }
+    if (mode === "pdf") {
+      if (typeof set.reps === "boolean") $("reps").checked = set.reps;
+      if (has(beatsEl, set.beats)) beatsEl.value = String(set.beats);
+    } else if (has(divEl, set.div)) divEl.value = String(set.div);
+    reschedule();
+    applying = false;
+    var p = s.position_beat || 0, start = 0, i;
+    if (p > 1 && p < total - 2) {
+      barBeats().forEach(function (b) { if (b <= p + 1e-6) start = b; });
+      for (i = 0; i < items.length; i++) if (items[i].vis >= 0 && items[i].beat >= start - 1e-6) {
+        if (items[i].beat > 0) { seek(i); reveal(); toast("Picked up where you left off.", "Start from the beginning", toStart); }
+        break;
+      }
+    }
+  }
+  function saveSettings() {
+    var t = currentTab; if (!t || !sb || !isMember) return;
+    var set = { bpm: +bpmEl.value };
+    if (mode === "pdf") { set.reps = $("reps").checked; set.beats = +beatsEl.value; } else set.div = +divEl.value;
+    ownState(t).settings = set;
+    sb.from("tab_state").upsert({ user_id: userId, tab_id: t.id, settings: set }, { onConflict: "user_id,tab_id" }).then(function (r) { if (r.error) console.warn("settings not saved: " + r.error.message); });
+  }
+  hooks.changed = function () { if (applying || !currentTab) return; clearTimeout(saveTimer); saveTimer = setTimeout(saveSettings, 900); };
+
+  /* practice time: counted while a library tab is playing, saved in small batches */
+  function tickPractice() {
+    if (!pract.since) return;
+    var now = performance.now(), dt = (now - pract.since) / 1000; pract.since = now;
+    if (dt > 0 && dt < 15) pract.acc += dt;
+  }
+  function flushPractice(withPosition) {
+    var t = currentTab, n = Math.floor(pract.acc);
+    if (!t || !sb || !isMember) { pract.acc = 0; return; }
+    if (n < 1 && !withPosition) return;
+    pract.acc -= n;
+    var it = items[shownItem >= 0 ? shownItem : pos], beat = it ? it.beat : 0, s = ownState(t);
+    if (n < 1 && !s.last_played_at) return;   // opened but never played: nothing to remember
+    s.seconds_practiced = (s.seconds_practiced || 0) + n; s.position_beat = beat; s.last_played_at = new Date().toISOString();
+    sb.rpc("log_practice", { p_tab: t.id, p_seconds: n, p_day: localDay(), p_position: beat }).then(function (r) { if (r.error) console.warn("practice not saved: " + r.error.message); });
+  }
+  hooks.play = function () {
+    if (!currentTab || !isMember) return;
+    pract.since = performance.now(); clearInterval(pract.timer);
+    pract.timer = setInterval(function () { tickPractice(); if (pract.acc >= 30) flushPractice(false); }, 5000);
+  };
+  hooks.pause = function () { tickPractice(); pract.since = 0; clearInterval(pract.timer); pract.timer = null; flushPractice(true); };
+  document.addEventListener("visibilitychange", function () { if (document.hidden && pract.since) { tickPractice(); flushPractice(true); } });
+
+  /* adding, editing, favourites */
   async function addFiles(files) {
     var list = Array.prototype.slice.call(files), added = 0, problems = [];
     for (var i = 0; i < list.length; i++) {
-      var f = list[i], txt = /\.txt$/i.test(f.name), pdf = /\.pdf$/i.test(f.name) || f.type === "application/pdf";
+      var f = list[i], txt = /\.txt$/i.test(f.name), pdf = /\.pdf$/i.test(f.name) || f.type === "application/pdf", name = cleanName(f.name);
       if (!txt && !pdf) { problems.push(f.name + " isn't a PDF or text file."); continue; }
       if (f.size > MAX_BYTES) { problems.push(f.name + " is larger than 20 MB."); continue; }
-      setLib("Saving " + (i + 1) + " of " + list.length + ": " + f.name + "\u2026");
+      if (active().some(function (t) { return t.name.toLowerCase() === name.toLowerCase() && t.size_bytes === f.size; })) { problems.push(name + " is already in the library, so it was skipped."); continue; }
+      setLib("Saving " + (i + 1) + " of " + list.length + ": " + f.name + "…");
       var path = uuid() + (txt ? ".txt" : ".pdf");
       try {
         var up = await sb.storage.from("tabs").upload(path, f, { contentType: txt ? "text/plain" : "application/pdf", upsert: false });
         if (up.error) throw up.error;
-        var ins = await sb.from("tabs").insert({ name: cleanName(f.name), path: path, size_bytes: f.size }).select().single();
+        var ins = await sb.from("tabs").insert({ name: name, path: path, size_bytes: f.size }).select().single();
         if (ins.error) { await sb.storage.from("tabs").remove([path]); throw ins.error; }
         tabsData.push(ins.data); blobs.set(path, f); added++;
       } catch (err) { problems.push(f.name + ": " + explain(err)); }
     }
-    setLib((added ? "Saved " + added + (added === 1 ? " tab. " : " tabs. ") : "") + problems.join(" "), problems.length > 0);
-    renderList();
+    setLib((added ? "Saved " + added + (added === 1 ? " tab. " : " tabs. ") : "") + problems.join(" "), problems.length > 0 && !added);
+    renderLibrary();
   }
-  async function renameTab(t, name) {
-    name = name.replace(/\s+/g, " ").trim().slice(0, 200);
-    if (!name || name === t.name) { editingId = null; renderList(); return; }
-    var r = await sb.from("tabs").update({ name: name }).eq("id", t.id).select().single();
-    if (r.error) { setLib("Couldn't rename it. " + explain(r.error), true); return; }
-    t.name = r.data.name; editingId = null; setLib(""); renderList();
+  async function saveEdit(t, name, artist, tagText) {
+    name = name.replace(/\s+/g, " ").trim().slice(0, 200); artist = artist.replace(/\s+/g, " ").trim().slice(0, 200);
+    var seen = {}, tags = [];
+    tagText.split(",").forEach(function (g) { g = g.replace(/\s+/g, " ").trim().slice(0, 30); if (g && !seen[g.toLowerCase()] && tags.length < 20) { seen[g.toLowerCase()] = 1; tags.push(g); } });
+    if (!name) { setLib("A tab needs a name.", true); return; }
+    var r = await sb.from("tabs").update({ name: name, artist: artist || null, tags: tags }).eq("id", t.id).select().single();
+    if (r.error) { setLib("Couldn't save the changes. " + explain(r.error), true); return; }
+    t.name = r.data.name; t.artist = r.data.artist; t.tags = r.data.tags; editingId = null; setLib("");
+    if (currentTab === t) $("nowplaying").textContent = t.name;
+    renderLibrary();
   }
-  async function deleteTab(t) {
-    var r = await sb.from("tabs").delete().eq("id", t.id).select();
-    if (r.error || !r.data.length) { setLib("Couldn't delete it. " + explain(r.error || "It may already be gone: reload the page."), true); deletingId = null; renderList(); return; }
-    var f = await sb.storage.from("tabs").remove([t.path]);   // the name is gone either way; a leftover file is harmless
-    tabsData = tabsData.filter(function (x) { return x.id !== t.id; }); blobs.delete(t.path); deletingId = null;
-    setLib(f.error ? "Deleted from the list, but the stored file couldn't be removed." : "", !!f.error); renderList();
+  async function toggleFav(t) {
+    var s = ownState(t); s.favorite = !s.favorite; renderList();
+    var r = await sb.from("tab_state").upsert({ user_id: userId, tab_id: t.id, favorite: s.favorite }, { onConflict: "user_id,tab_id" });
+    if (r.error) { s.favorite = !s.favorite; renderList(); setLib("Couldn't save the favorite. " + explain(r.error), true); }
   }
 
+  /* trash: a deleted tab can be put back for 30 days */
+  async function trashTab(t) {
+    var r = await sb.from("tabs").update({ deleted_at: new Date().toISOString(), deleted_by_email: (session && session.user.email) || null }).eq("id", t.id).select().single();
+    if (r.error) { setLib("Couldn't delete it. " + explain(r.error), true); return; }
+    t.deleted_at = r.data.deleted_at; t.deleted_by_email = r.data.deleted_by_email;
+    if (currentTab === t) currentTab = null;
+    setLib(""); renderLibrary();
+    toast("Moved “" + t.name + "” to the trash.", "Undo", function () { restoreTab(t); });
+  }
+  async function restoreTab(t) {
+    var r = await sb.from("tabs").update({ deleted_at: null, deleted_by_email: null }).eq("id", t.id).select().single();
+    if (r.error) { toast("Couldn't put it back. " + explain(r.error)); return; }
+    t.deleted_at = null; t.deleted_by_email = null;
+    renderLibrary(); if (!$("view-trash").hidden) renderTrash();
+  }
+  // removes the stored file first, then the entry: if the second step fails the entry is still there to try again
+  async function destroyTab(t) {
+    var f = await sb.storage.from("tabs").remove([t.path]);
+    if (f.error) throw f.error;
+    var r = await sb.from("tabs").delete().eq("id", t.id).select();
+    if (r.error) throw r.error;
+    tabsData = tabsData.filter(function (x) { return x.id !== t.id; }); blobs.delete(t.path); delete stateBy[t.id];
+  }
+  async function emptyOldTrash() {
+    var old = trashed().filter(function (t) { return Date.now() - new Date(t.deleted_at).getTime() > TRASH_DAYS * DAY_MS; });
+    for (var i = 0; i < old.length; i++) { try { await destroyTab(old[i]); } catch (err) { console.warn("old trash not removed: " + explain(err)); } }
+    if (old.length) renderFoot();
+  }
+  function renderTrash() {
+    var box = $("trashlist"), rows = trashed().sort(function (a, b) { return a.deleted_at < b.deleted_at ? 1 : -1; });
+    box.textContent = "";
+    if (!rows.length) { var e = el("li", "empty"); e.textContent = "The trash is empty."; box.appendChild(e); return; }
+    rows.forEach(function (t) {
+      var li = el("li", "tabrow"), main = el("div", "tabmain"), acts = el("div", "tabacts"), n = el("span", "rname"), m = el("span", "meta");
+      var left = Math.max(0, TRASH_DAYS - daysAgo(t.deleted_at)), by = (t.deleted_by_email || "").split("@")[0];
+      n.textContent = t.name;
+      m.textContent = "Deleted " + relDay(t.deleted_at) + (by ? " by " + by : "") + " · " + (left === 1 ? "1 day left" : left + " days left");
+      main.appendChild(n); main.appendChild(m);
+      acts.appendChild(btn("Put back", "", function () { purgeAsk = null; restoreTab(t).then(function () { $("trashmsg").textContent = ""; }); }));
+      acts.appendChild(purgeAsk === t.id
+        ? btn("Yes, delete for good", "danger", async function () {
+            purgeAsk = null;
+            try { await destroyTab(t); $("trashmsg").textContent = ""; } catch (err) { $("trashmsg").textContent = "Couldn't delete it. " + explain(err); }
+            renderTrash(); renderFoot();
+          })
+        : btn("Delete forever", "", function () { purgeAsk = t.id; renderTrash(); }));
+      li.appendChild(main); li.appendChild(acts); box.appendChild(li);
+    });
+  }
+
+  /* backup: every tab in one zip */
+  async function backupAll() {
+    var list = active().sort(function (a, b) { return a.name.localeCompare(b.name); }), b = $("backup");
+    if (!window.JSZip) { setLib("The zip tool didn't load. Check your connection and reload the page.", true); return; }
+    if (!list.length) return;
+    b.disabled = true;
+    try {
+      var zip = new JSZip(), used = {}, index = [];
+      for (var i = 0; i < list.length; i++) {
+        var t = list[i], ext = /\.txt$/i.test(t.path) ? ".txt" : ".pdf";
+        setLib("Collecting " + (i + 1) + " of " + list.length + ": " + t.name + "…");
+        var base = t.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Untitled", fn = base + ext, k = 2;
+        while (used[fn.toLowerCase()]) fn = base + " (" + (k++) + ")" + ext;
+        used[fn.toLowerCase()] = 1;
+        zip.file(fn, await getBlob(t, false));
+        index.push({ file: fn, name: t.name, artist: t.artist || "", tags: t.tags || [], added: t.created_at, added_by: t.uploaded_by_email || "" });
+      }
+      zip.file("library.json", JSON.stringify(index, null, 2));
+      setLib("Building the zip…");
+      var out = await zip.generateAsync({ type: "blob" }), a = el("a"), url = URL.createObjectURL(out);
+      a.href = url; a.download = "tab-library-" + localDay() + ".zip"; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      setLib("Downloaded " + list.length + (list.length === 1 ? " tab" : " tabs") + " as a zip.");
+    } catch (err) { setLib("The backup stopped. " + explain(err), true); }
+    b.disabled = false;
+  }
+
+  /* practice log */
+  async function loadPractice() {
+    var msg = $("practmsg");
+    if (!sb || !isMember) { msg.textContent = "Sign in to see your practice log."; return; }
+    tickPractice(); flushPractice(false);
+    msg.textContent = "Loading…";
+    var from = new Date(); from.setDate(from.getDate() - 59);
+    var r = await sb.from("practice_days").select("day,seconds").gte("day", localDay(from)).order("day");
+    if (r.error) { msg.textContent = explain(r.error); msg.className = "err"; return; }
+    msg.textContent = ""; msg.className = "muted";
+    var by = {}, days = [], i, d;
+    r.data.forEach(function (x) { by[x.day] = x.seconds; });
+    for (i = 59; i >= 0; i--) { d = new Date(); d.setDate(d.getDate() - i); days.push({ date: d, s: by[localDay(d)] || 0 }); }
+    // a streak may still be alive if today hasn't been played yet
+    var k = days.length - 1, cur = 0, best = 0, run = 0, week = 0, total = 0;
+    if (days[k].s < 60) k--;
+    while (k >= 0 && days[k].s >= 60) { cur++; k--; }
+    days.forEach(function (x, j) { run = x.s >= 60 ? run + 1 : 0; if (run > best) best = run; if (j >= days.length - 7) week += x.s; });
+    Object.keys(stateBy).forEach(function (id) { total += stateBy[id].seconds_practiced || 0; });
+    total = Math.max(total, days.reduce(function (a, x) { return a + x.s; }, 0));   // tabs deleted for good take their totals with them
+    $("st-streak").textContent = cur; $("st-best").textContent = best; $("st-week").textContent = fmtDur(week); $("st-total").textContent = fmtDur(total);
+    var last = days.slice(-14), max = Math.max.apply(null, last.map(function (x) { return x.s; }).concat([60])), bars = $("daybars");
+    bars.textContent = "";
+    last.forEach(function (x) {
+      var col = el("div", "daycol"), v = el("span", "dayval"), bar = el("div", "daybar"), lab = el("span", "daylab"), mins = Math.round(x.s / 60);
+      v.textContent = x.s >= 30 ? mins : "";
+      bar.style.height = Math.round(x.s / max * 100) + "%"; if (x.s > 0) bar.classList.add("some");
+      lab.textContent = x.date.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2);
+      col.title = x.date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }) + ": " + fmtDur(x.s);
+      var track = el("div", "daytrack"); track.appendChild(bar);
+      col.appendChild(v); col.appendChild(track); col.appendChild(lab); bars.appendChild(col);
+    });
+    var list = $("practlist"), rows = active().filter(function (t) { return st(t).seconds_practiced > 0; }).sort(function (a, b) { return st(b).seconds_practiced - st(a).seconds_practiced; });
+    list.textContent = "";
+    if (!rows.length) { var e = el("li", "empty"); e.textContent = "Nothing yet. Open a tab from the library and press Play."; list.appendChild(e); }
+    rows.forEach(function (t) {
+      var li = el("li", "tabrow"), main = el("div", "tabmain"), m = el("span", "meta"), tm = el("b", "ptime");
+      main.appendChild(btn(t.name, "open", function () { openTab(t); }));
+      m.textContent = "Last played " + relDay(st(t).last_played_at); main.appendChild(m);
+      tm.textContent = fmtDur(st(t).seconds_practiced);
+      li.appendChild(main); li.appendChild(tm); list.appendChild(li);
+    });
+  }
+
+  /* members */
+  async function loadMembers() {
+    var msg = $("memmsg"), list = $("memlist");
+    if (!sb || !isMember) { msg.textContent = "Sign in to see who has access."; return; }
+    msg.className = "muted"; msg.textContent = list.children.length ? msg.textContent : "Loading…";
+    var a = await Promise.all([sb.rpc("library_info"), sb.rpc("library_members")]);
+    if (a[0].error || a[1].error) { msg.textContent = explain(a[0].error || a[1].error); msg.className = "err"; return; }
+    var info = (a[0].data && a[0].data[0]) || { max_members: 0, member_count: 0, is_owner: false }, mem = a[1].data || [];
+    msg.textContent = mem.length + " of " + info.max_members + " places taken." + (info.is_owner ? "" : " Only the owner can add or remove people.");
+    list.textContent = "";
+    var call = async function (fn, args) {
+      var r = await sb.rpc(fn, args);
+      if (r.error) { msg.textContent = explain(r.error); msg.className = "err"; return; }
+      removeAsk = null; loadMembers();
+    };
+    mem.forEach(function (m) {
+      var li = el("li", "tabrow"), main = el("div", "tabmain"), acts = el("div", "tabacts"), n = el("span", "rname"), meta = el("span", "meta");
+      n.textContent = m.email || "(no email)";
+      meta.textContent = (m.is_owner ? "Owner" : "Member") + (m.is_me ? " · you" : "") + " · joined " + fmtDate(m.added_at);
+      main.appendChild(n); main.appendChild(meta);
+      if (info.is_owner && !m.is_owner) {
+        acts.appendChild(removeAsk === m.user_id
+          ? btn("Yes, remove access", "danger", function () { call("library_remove_member", { p_user: m.user_id }); })
+          : btn("Remove", "", function () { removeAsk = m.user_id; loadMembers(); }));
+      }
+      li.appendChild(main); li.appendChild(acts); list.appendChild(li);
+    });
+    $("ownerbox").hidden = !info.is_owner;
+    if (!info.is_owner) return;
+    $("limval").textContent = info.max_members;
+    $("limdown").disabled = info.max_members <= mem.length; $("limup").disabled = info.max_members >= 20;
+    $("limdown").onclick = function () { call("library_set_limit", { p_max: info.max_members - 1 }); };
+    $("limup").onclick = function () { call("library_set_limit", { p_max: info.max_members + 1 }); };
+    $("limnote").textContent = info.max_members > mem.length ? (info.max_members - mem.length) + " free" : "full";
+    var w = await sb.rpc("library_waiting"), wl = $("waitlist");
+    wl.textContent = "";
+    if (w.error) { var e1 = el("li", "empty"); e1.textContent = explain(w.error); wl.appendChild(e1); return; }
+    if (!w.data.length) { var e2 = el("li", "empty"); e2.textContent = "Nobody is waiting."; wl.appendChild(e2); return; }
+    w.data.forEach(function (u) {
+      var li = el("li", "tabrow"), main = el("div", "tabmain"), acts = el("div", "tabacts"), n = el("span", "rname"), meta = el("span", "meta");
+      n.textContent = u.email || "(no email)"; meta.textContent = "Account created " + fmtDate(u.created_at);
+      main.appendChild(n); main.appendChild(meta);
+      var ap = btn("Approve", "primary", function () { call("library_approve_member", { p_user: u.user_id }); });
+      ap.disabled = info.max_members <= mem.length; if (ap.disabled) ap.title = "Raise the limit first";
+      acts.appendChild(ap); li.appendChild(main); li.appendChild(acts); wl.appendChild(li);
+    });
+  }
+
+  /* wiring */
   $("signin").addEventListener("submit", async function (e) {
     e.preventDefault();
     var msg = $("authmsg"), b = $("signinbtn");
     if (!sb) { msg.textContent = "The sign-in service didn't load. Check your connection and reload the page."; return; }
-    msg.textContent = ""; b.disabled = true; b.textContent = "Signing in\u2026";
+    msg.textContent = ""; b.disabled = true; b.textContent = "Signing in…";
     try {
       var r = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
       if (r.error) msg.textContent = explain(r.error);
     } catch (err) { msg.textContent = explain(err); }
     b.disabled = false; b.textContent = "Sign in";
   });
-  $("signout").addEventListener("click", function () { if (sb) sb.auth.signOut(); });
+  $("signout").addEventListener("click", function () { leaveTab(); if (sb) sb.auth.signOut(); });
   $("pwbtn").addEventListener("click", function () { $("pwform").hidden = !$("pwform").hidden; $("pwmsg").textContent = ""; $("newpw").value = ""; if (!$("pwform").hidden) $("newpw").focus(); });
   $("pwcancel").addEventListener("click", function () { $("pwform").hidden = true; });
   $("pwform").addEventListener("submit", async function (e) {
@@ -1387,10 +2221,19 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     msg.textContent = r.error ? explain(r.error) : "Password changed."; msg.className = r.error ? "err" : "muted";
     if (!r.error) $("newpw").value = "";
   });
+  $("nav").addEventListener("click", function (e) {
+    var v = e.target.getAttribute && e.target.getAttribute("data-view"); if (!v) return;
+    view(v === "lib" ? (session ? "lib" : "auth") : v);
+  });
   $("guest").addEventListener("click", function () { view("player"); });
   $("back").addEventListener("click", function () { view(session ? "lib" : "auth"); });
   $("search").addEventListener("input", renderList);
+  $("sort").addEventListener("change", renderList);
+  $("favonly").addEventListener("change", renderList);
   $("addfile").addEventListener("change", function (e) { var fs = e.target.files; if (fs && fs.length) addFiles(fs); e.target.value = ""; });
+  $("backup").addEventListener("click", backupAll);
+  $("trashbtn").addEventListener("click", function () { purgeAsk = null; $("trashmsg").textContent = ""; view("trash"); });
+  $("trashback").addEventListener("click", function () { view("lib"); });
 
   if (window.supabase && window.supabase.createClient) {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1401,13 +2244,12 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     view("auth"); $("authmsg").textContent = "The sign-in service didn't load. Check your connection and reload the page.";
   }
 
-  window.__player = { handleFile: handleFile, state: function () { return { mode: mode, items: items.length, total: total, pos: pos, shown: shownItem, playing: playing, rings: rings.length }; },
-    beats: function (n) { return items.filter(function (i) { return i.vis >= 0; }).slice(0, n).map(function (i) { return +i.beat.toFixed(3); }); }, countIn: countInBeats };
+  window.__player = { handleFile: handleFile, detectPitch: detectPitch,
+    state: function () { return { mode: mode, items: items.length, total: total, pos: pos, shown: shownItem, playing: playing, rings: rings.length, bpm: +bpmEl.value, tab: currentTab ? currentTab.name : null }; },
+    beats: function (n) { return items.filter(function (i) { return i.vis >= 0; }).slice(0, n).map(function (i) { return +i.beat.toFixed(3); }); },
+    countIn: countInBeats, flags: function () { var n = 0; items.forEach(function (i) { i.notes.forEach(function (x) { if (x.legato || x.slide) n++; }); }); return n; } };
 
-  ta.value = SAMPLE;
-  loadText(SAMPLE, "Example tab");
-  setStatus("Example tab loaded. Open a file to replace it.");
-  $("nowplaying").textContent = "Example tab";
+  showExample();
 })();
 </script>
 </body>
