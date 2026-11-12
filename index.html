@@ -91,11 +91,11 @@ select { font: 14px var(--body); color: var(--ink); background: var(--panel); bo
 .cap { color: var(--muted); }
 .n { font-weight: 700; border-radius: 3px; }
 .n.on { background: var(--hit-bg); color: var(--hit); box-shadow: 0 0 0 2px var(--hit-bg); }
-.ph { position: absolute; left: 0; width: 1ch; background: var(--accent); opacity: .28; border-radius: 2px; pointer-events: none; }
+.ph { position: absolute; left: 0; will-change: transform; width: 1ch; background: var(--accent); opacity: .28; border-radius: 2px; pointer-events: none; }
 .page { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; max-width: 100%; cursor: pointer; }
 .page canvas { display: block; width: 100%; height: 100%; }
 .ov { position: absolute; inset: 0; pointer-events: none; }
-.ph2 { position: absolute; width: 0.9%; margin-left: -0.45%; background: var(--paper-cursor); opacity: .22; border-radius: 3px; }
+.ph2 { position: absolute; left: 0; will-change: transform; width: 0.9%; margin-left: -0.45%; background: var(--paper-cursor); opacity: .22; border-radius: 3px; }
 .ring { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: var(--paper-hit); opacity: .38; box-shadow: 0 0 0 2px var(--paper-hit); }
 #measure { position: absolute; visibility: hidden; white-space: pre; left: -9999px; top: 0; }
 .note { color: var(--muted); font-size: 13px; max-width: 70ch; margin: 0; }
@@ -593,7 +593,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<script>window.__BUILD = "2026-11-12 10:29";</script>
+<script>window.__BUILD = "2026-11-12 13:01";</script>
 <script>
 /* Nylon-string guitar, one short recording per note (MIDI note number -> MP3, base64).
    From the FluidR3_GM soundfont, Creative Commons Attribution 3.0, as prepared for the web by the MIDI.js Soundfonts project
@@ -1298,9 +1298,10 @@ function engravedTimeline(eng, beatsOverride, follow) {
   var events = [], clicks = [], bars = [], t = 0, maxFret = 0, lastMain = -8;
   playOrder(eng, follow !== false).forEach(function (o) {
     var m = o.m, beats = m.T / TPB, pend = [];
-    bars.push({ beat: t, beats: beats, pickup: !!m.pickup });
+    bars.push({ beat: t, beats: beats, pickup: !!m.pickup, sys: o.si, xa: m.xa, xb: m.xb, first: !!m.firstInSys });
+    var barIdx = bars.length - 1;
     m.cols.forEach(function (c) {
-      var ev = { beat: t, sys: o.si, x: c.x, notes: c.notes.map(function (nt) {
+      var ev = { beat: t, sys: o.si, bar: barIdx, x: c.x, notes: c.notes.map(function (nt) {
         var fret = +nt.s; if (fret > maxFret) maxFret = fret;
         return { line: nt.line, fret: fret, midi: eng.tuning[nt.line] + fret + eng.info.capo, x: nt.x, w: nt.w, legato: !!nt.legato, slide: !!nt.slide, tied: !!nt.tied, from: nt.from };
       }) };
@@ -1344,6 +1345,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   var shortLand = matchMedia("(max-height: 520px) and (orientation: landscape)"), landscape = matchMedia("(orientation: landscape)");
   var deckEl = $("deck"), prefs = {}, ZOOMS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3], zoom = 1, rasterTok = 0, rasterTask = null, rasterTimer = null, lastTabW = 0;
   var boardArgs = null, boardW = 0, wake = null, wakeBusy = false;
+  var path = [], pk = 0, segs = [], followAt = 0, PH2W = 0.009;   // PH2W: width of the bar on a printed page as a share of the page (.ph2 in the CSS)
 
   function setStatus(msg, isErr) { statusEl.textContent = msg; statusEl.className = isErr ? "err" : ""; }
   function charW() { return $("measure").getBoundingClientRect().width / 40 || 8; }
@@ -1374,7 +1376,93 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       tl.clicks.forEach(function (c) { items.push({ beat: c.beat, notes: [], click: c.accent ? 2 : 1, vis: -1 }); });
       items.sort(function (a, b) { return a.beat - b.beat || a.vis - b.vis; });
     }
+    buildPath();
     warmSound();   // start decoding the recordings this tab needs, in the background
+  }
+
+  /* ----- the path the bar glides along: where it should be at every beat ----- */
+  // Waypoints in playing order: { beat, x, grp, jump }. x is in page points (printed page) or characters (text tab); grp is
+  // the line of music (system, or text block). Between two waypoints on the same line the bar moves at a steady speed, so
+  // it slides from each note to the next and reaches it exactly when it sounds. A waypoint marked jump is one the bar cannot
+  // slide to (the next line down, or a repeat sending the music somewhere else): it runs out to the end of the bar it is
+  // leaving and reappears there.
+  function buildPath() {
+    path = []; pk = 0;
+    var last = function () { return path[path.length - 1]; };
+    if (mode === "text") {
+      var div = +divEl.value;
+      steps.forEach(function (st, i) {
+        var prev = last(), jump = !prev || prev.grp !== st.b;
+        if (prev && jump) path.push({ beat: i / div, x: prev.x + 1, grp: prev.grp });
+        path.push({ beat: i / div, x: st.col, grp: st.b, jump: jump });
+      });
+      if (path.length) path.push({ beat: total, x: last().x + 1, grp: last().grp });
+      return;
+    }
+    var bars = barList, firstX = {}, prevBar = 0;
+    if (!bars.length) return;
+    pdfEvents.forEach(function (e) { if (firstX[e.bar] === undefined) firstX[e.bar] = e.x + e.notes[0].w / 2; });
+    // where the bar appears when it enters a printed bar: at the barline, or (first bar of a line) part-way through the clef
+    var startX = function (k) { var fx = firstX[k], xa = bars[k].xa; return fx === undefined ? xa + 2 : bars[k].first ? xa + (fx - xa) * 0.5 : Math.min(fx, xa + 2); };
+    var walk = function (a, b, cap) {
+      for (var k = a + 1; k <= b; k++) {
+        if (bars[k].sys === bars[k - 1].sys && Math.abs(bars[k].xa - bars[k - 1].xb) < 32) continue;   // printed side by side: keep sliding
+        var beat = Math.max(last().beat, Math.min(bars[k].beat, cap));
+        path.push({ beat: beat, x: bars[k - 1].xb, grp: bars[k - 1].sys });
+        path.push({ beat: beat, x: startX(k), grp: bars[k].sys, jump: true });
+      }
+    };
+    path.push({ beat: 0, x: startX(0), grp: bars[0].sys, jump: true });
+    pdfEvents.forEach(function (e) {
+      if (e.bar > prevBar) { walk(prevBar, e.bar, e.beat); prevBar = e.bar; }
+      var l = last(), w = { beat: Math.max(l.beat, e.beat), x: e.x + e.notes[0].w / 2, grp: e.sys };
+      if (l.jump && l.grp === e.sys && l.beat >= e.beat - 1e-6) { path.pop(); w.jump = true; }       // the note is right at the start: appear on it
+      else if (l.grp !== e.sys) w.jump = true;
+      path.push(w);
+    });
+    walk(prevBar, bars.length - 1, total);
+    var lb = bars[bars.length - 1];
+    path.push({ beat: Math.max(last().beat, total), x: lb.xb, grp: lb.sys });
+  }
+  // put the bar at x on line grp (and bring that line into view when asked)
+  function setHead(grp, x, scroll) {
+    if (mode === "text") {
+      var b = blocks[grp]; if (!b) return;
+      if (liveBlock !== grp) {
+        if (liveBlock >= 0 && blocks[liveBlock]) { blocks[liveBlock].ph.hidden = true; blocks[liveBlock].sys.classList.remove("live"); }
+        liveBlock = grp; b.ph.hidden = false; b.sys.classList.add("live");
+        if (scroll) scrollToY(b.sys.getBoundingClientRect().top);
+      }
+      b.ph.style.transform = "translateX(" + x * 100 + "%)";            // the bar is one character wide, so 100% is one character
+      return;
+    }
+    var sys = eng.systems[grp], pe = sys && pageEls[sys.page]; if (!pe) return;
+    if (liveSys !== grp) {
+      pageEls.forEach(function (q) { q.ph.hidden = true; });
+      liveSys = grp; pe.ph.hidden = false;
+      pe.ph.style.top = (sys.top - sys.sp * 0.9) / pe.H * 100 + "%";
+      pe.ph.style.height = (sys.bottom - sys.top + sys.sp * 1.8) / pe.H * 100 + "%";
+      if (scroll) { var r = pe.wrap.getBoundingClientRect(); scrollToY(r.top + sys.sysTop / pe.H * r.height); }
+    }
+    pe.ph.style.transform = "translateX(" + x / pe.W / PH2W * 100 + "%)";   // a percentage of the bar's own width, so it holds at any page size
+    followX(pe, x / pe.W, !scroll);
+  }
+  // which beat the music has reached at audio time now: exact, because every scheduled note records when it and the next one sound
+  function beatAt(now) {
+    while (segs.length > 1 && segs[1].t0 <= now) segs.shift();
+    var s = segs[0]; if (!s) return null;
+    if (now <= s.t0 || s.t1 <= s.t0) return s.b0;
+    return now >= s.t1 ? s.b1 : s.b0 + (s.b1 - s.b0) * (now - s.t0) / (s.t1 - s.t0);
+  }
+  // slide the bar to where the music is right now
+  function glide(now) {
+    var b = beatAt(now); if (b === null || !path.length) return;
+    if (pk >= path.length || path[pk].beat > b) pk = 0;
+    while (pk + 1 < path.length && path[pk + 1].beat <= b) pk++;
+    var a = path[pk], c = path[pk + 1], x = a.x;
+    if (b < a.beat) return;
+    if (c && !c.jump && c.grp === a.grp && c.beat > a.beat) x += (c.x - a.x) * (b - a.beat) / (c.beat - a.beat);
+    setHead(a.grp, x, true);
   }
   function itemOfVis(v) { for (var i = 0; i < items.length; i++) if (items[i].vis === v) return i; return 0; }
 
@@ -1412,12 +1500,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   function showText(i, scroll) {
     var st = steps[i]; if (!st) return;
     var b = blocks[st.b];
-    if (liveBlock !== st.b) {
-      if (liveBlock >= 0 && blocks[liveBlock]) { blocks[liveBlock].ph.hidden = true; blocks[liveBlock].sys.classList.remove("live"); }
-      liveBlock = st.b; b.ph.hidden = false; b.sys.classList.add("live");
-      if (scroll) scrollToY(b.sys.getBoundingClientRect().top);
-    }
-    b.ph.style.left = st.col + "ch";
+    setHead(st.b, st.col, scroll);
     var x = st.col * charW(), sc = b.sys;
     if (x > sc.scrollLeft + sc.clientWidth - 60 || x < sc.scrollLeft) sc.scrollLeft = Math.max(0, x - 40);
     if (st.notes.length) {
@@ -1504,6 +1587,8 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     if (zoom <= 1) return;
     var x = frac * pe.wrap.offsetWidth, vw = tabEl.clientWidth, sl = tabEl.scrollLeft;
     if (x < sl + vw * 0.1 || x > sl + vw * 0.8) {
+      var ms = performance.now(); if (!instant && ms - followAt < 500) return;   // a scroll is already on its way
+      followAt = ms;
       var left = Math.max(0, x - vw * 0.2);
       if (instant || reduced() || !tabEl.scrollTo) tabEl.scrollLeft = left; else tabEl.scrollTo({ left: left, behavior: "smooth" });
     }
@@ -1520,16 +1605,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   function showPdf(i, scroll) {
     var ev = pdfEvents[i]; if (!ev) return;
     var sys = eng.systems[ev.sys], pe = pageEls[sys.page]; if (!pe) return;
-    if (liveSys !== ev.sys) {
-      pageEls.forEach(function (q) { q.ph.hidden = true; });
-      liveSys = ev.sys; pe.ph.hidden = false;
-      pe.ph.style.top = (sys.top - sys.sp * 0.9) / pe.H * 100 + "%";
-      pe.ph.style.height = (sys.bottom - sys.top + sys.sp * 1.8) / pe.H * 100 + "%";
-      if (scroll) { var r = pe.wrap.getBoundingClientRect(); scrollToY(r.top + sys.sysTop / pe.H * r.height); }
-    }
-    var cx = (ev.x + ev.notes[0].w / 2) / pe.W;
-    pe.ph.style.left = cx * 100 + "%";
-    followX(pe, cx, !scroll);
+    setHead(ev.sys, ev.x + ev.notes[0].w / 2, scroll);
     rings.forEach(function (r) { r.remove(); }); rings = [];
     ev.notes.forEach(function (n) {
       var r = el("div", "ring");
@@ -1789,12 +1865,14 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
         if ($("loop").checked) { pos = 0; continue; }
         vq.push({ i: -1, t: nextTime }); clearInterval(timer); timer = null; return;
       }
-      var it = items[pos];
+      var it = items[pos], t0 = nextTime;
       for (var k = 0; k < it.notes.length; k++) pluck(it.notes[k], nextTime);
       if (it.click && $("metro").checked) click(nextTime, it.click === 2);
       if (it.vis >= 0) vq.push({ i: pos, t: nextTime });
       pos++;
-      nextTime += ((pos < items.length ? items[pos].beat : total) - it.beat) * spb;
+      var b1 = pos < items.length ? items[pos].beat : total;
+      nextTime += (b1 - it.beat) * spb;
+      segs.push({ t0: t0, t1: nextTime, b0: it.beat, b1: b1 });   // from t0 to t1 the music moves from beat b0 to b1
     }
   }
   function frame() {
@@ -1802,9 +1880,10 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var lat = Math.min(0.4, ctx.outputLatency || 0);
     while (vq.length && vq[0].t + lat <= ctx.currentTime) {
       var e = vq.shift();
-      if (e.i < 0) { playing = false; pos = 0; shownItem = -1; playBtn.textContent = "Play"; keepAwake(); if (hooks.pause) hooks.pause(true); return; }
+      if (e.i < 0) { if (!reduced()) glide(e.t); playing = false; pos = 0; shownItem = -1; playBtn.textContent = "Play"; keepAwake(); if (hooks.pause) hooks.pause(true); return; }
       show(e.i, true);
     }
+    if (!reduced()) glide(ctx.currentTime - lat);   // with "reduce motion" on, the bar steps from note to note instead
     requestAnimationFrame(frame);
   }
   // one bar of clicks; before a pickup, just the beats that lead into it
@@ -1835,7 +1914,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     if (pos >= items.length) pos = 0;
     var first = pos; while (first < items.length - 1 && items[first].vis < 0) first++;
     revealIfHidden(first);                   // on a small screen the music may still be below the controls
-    playing = true; playBtn.textContent = "Pause"; vq = [];
+    playing = true; playBtn.textContent = "Pause"; vq = []; segs = [];
     keepAwake();
     if (hooks.play) hooks.play();
     var t = ctx.currentTime + 0.08;
@@ -1847,9 +1926,9 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     playTok++;                               // cancels a start that is still waiting for sound
     if (!playing) return;
     playing = false; playBtn.textContent = "Play";
-    clearInterval(timer); timer = null; vq = [];
+    clearInterval(timer); timer = null; vq = []; segs = [];
     if (ctx) Object.keys(voices).forEach(function (k) { damp(k, ctx.currentTime); });
-    if (shownItem >= 0) pos = shownItem;
+    if (shownItem >= 0) { pos = shownItem; show(shownItem, false); }   // the bar goes back onto the note that Play will start from
     keepAwake();
     if (hooks.pause) hooks.pause(false);
   }
@@ -1881,7 +1960,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   function seek(idx) {
     pos = idx; show(idx, false);
     if (playing) {
-      vq = []; Object.keys(voices).forEach(function (k) { damp(k, ctx.currentTime); });
+      vq = []; segs = []; Object.keys(voices).forEach(function (k) { damp(k, ctx.currentTime); });
       nextTime = ctx.currentTime + 0.06;
       if (!timer) timer = setInterval(tick, 25);
     }
