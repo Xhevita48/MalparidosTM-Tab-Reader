@@ -19,7 +19,7 @@ html { color-scheme: light; } body { margin: 0; } img { max-width: 100%; } [hidd
 /* Layout: one column. A sticky deck (transport + fretboard) stays in view while the tab scrolls underneath it. */
 :root {
   --bg: #eef1f3; --panel: #ffffff; --ink: #18202a; --muted: #5c6875; --line: #d3d9df;
-  --accent: #2f55d4; --accent-ink: #ffffff;
+  --accent: #2f55d4; --accent-ink: #ffffff; --accent-soft: #dde5fb;
   --hit: #c2410c; --hit-bg: #ffe1cf; --err: #b42318; --ok: #1a7f4b; --star: #b86a00;
   --wood: #4a342b; --wire: #c9ccd1; --string: #eadfc4; --inlay: #d9d2bf; --dot: #ffb020; --dot-ink: #1b1300;
   --paper: #ffffff; --paper-cursor: #2f55d4; --paper-hit: #e8590c;   /* printed pages stay white in both themes */
@@ -29,13 +29,13 @@ html { color-scheme: light; } body { margin: 0; } img { max-width: 100%; } [hidd
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #12161c; --panel: #1b212a; --ink: #e6ebf1; --muted: #94a0ae; --line: #2e3743;
-  --accent: #8aa4ff; --accent-ink: #0b1020;
+  --accent: #8aa4ff; --accent-ink: #0b1020; --accent-soft: #283357;
   --hit: #ffa36b; --hit-bg: #4d2b16; --err: #ff8a7a; --ok: #5fd39a; --star: #ffb020;
   --wood: #3a2922; --wire: #aeb3ba; --string: #eadfc4; --inlay: #b8b09c; --dot: #ffb020; --dot-ink: #1b1300;
   color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #12161c; --panel: #1b212a; --ink: #e6ebf1; --muted: #94a0ae; --line: #2e3743;
-  --accent: #8aa4ff; --accent-ink: #0b1020;
+  --accent: #8aa4ff; --accent-ink: #0b1020; --accent-soft: #283357;
   --hit: #ffa36b; --hit-bg: #4d2b16; --err: #ff8a7a; --ok: #5fd39a; --star: #ffb020;
   --wood: #3a2922; --wire: #aeb3ba; --string: #eadfc4; --inlay: #b8b09c; --dot: #ffb020; --dot-ink: #1b1300;
   color-scheme: dark }
@@ -339,6 +339,129 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
   .deck { padding-block: 6px; }
   #play, .tbtn { min-height: 44px; }
 }
+
+/* ----- practice tools, reading check, bar editor, folders, activity ----- */
+/* a switch that is on is tinted, not solid, so Play stays the one loud button */
+.toggle[aria-pressed="true"], #optbtn[aria-expanded="true"] { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); }
+input[type="number"] { font: 15px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; width: 4.2em; text-align: center; }
+#trainctl { flex-wrap: wrap; }
+.strip { gap: 8px 10px; }
+.chip { flex: none; white-space: nowrap; }
+.hint { font-weight: 600; color: var(--accent); }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel); border: 1px solid var(--accent); border-radius: 999px; padding: 3px 4px 3px 12px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#trainchip { padding: 7px 12px; }
+.chipx { border: 0; background: none; padding: 0; width: 28px; height: 28px; min-height: 0; border-radius: 50%; justify-content: center; font-size: 20px; line-height: 1; color: var(--muted); }
+.chipx.big { width: 40px; height: 40px; font-size: 26px; }
+.report { margin: 0; font-size: 14px; color: var(--muted); max-width: 80ch; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.report span { min-width: 0; flex: 0 1 auto; }
+/* boxes over the bars of a printed page (the page is always white, so these colours don't follow the theme) */
+.barbox { position: absolute; pointer-events: none; border-radius: 3px; }
+.barbox.sec { background: rgba(47, 85, 212, .12); box-shadow: inset 0 -3px 0 var(--paper-cursor); }
+#tab.picking .barbox { pointer-events: auto; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(47, 85, 212, .3); }
+#tab.picking .barbox.sec { background: rgba(47, 85, 212, .22); }
+@media (hover: hover) { #tab.picking .barbox:hover { background: rgba(47, 85, 212, .14); } }
+#tab.checking .barbox.unsure { background: rgba(224, 142, 0, .2); box-shadow: inset 0 0 0 2px #c27700; }
+#tab.checking .barbox.fixed { background: rgba(26, 127, 75, .13); box-shadow: inset 0 0 0 2px #1a7f4b; }
+#tab .barbox.editing, #tab.checking .barbox.editing { background: rgba(47, 85, 212, .1); box-shadow: inset 0 0 0 3px var(--paper-cursor); }
+.secbox { position: absolute; background: var(--accent); opacity: .13; border-radius: 3px; pointer-events: none; min-height: 0; }
+#tab.picking .system { cursor: pointer; }
+/* the bar editor: a sheet along the bottom, so the bar itself stays in view above it */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0, 0, 0, .18);
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 8px; max-height: 72vh; overflow-y: auto; }
+@media (min-width: 720px) { .sheet { left: 50%; right: auto; width: 660px; transform: translateX(-50%); border: 1px solid var(--line); border-bottom: 0; border-radius: 12px 12px 0 0; } }
+.sheethead { display: flex; align-items: center; gap: 12px; }
+.fxtitle { flex: 1; min-width: 0; }
+.sheethead h3 { margin: 0; font-size: 1.1rem; line-height: 1.2; }
+#fx-state { margin: 0; line-height: 1.3; }
+.fxrow { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.fxnote { flex-wrap: nowrap; }
+#fx-note { flex: 1; min-width: 0; text-align: center; font-size: 14px; }
+.grow { flex: 1; }
+.narrow { display: none; }
+.fxstrip { position: relative; height: 50px; margin: 0 14px 8px; border-bottom: 2px solid var(--line); }
+.fxtick { position: absolute; bottom: 0; width: 1px; height: 16px; background: var(--muted); }
+.fxtick.end { width: 2px; height: 30px; margin-left: -1px; }
+.fxtick span { position: absolute; bottom: 18px; left: 3px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fxdot { position: absolute; bottom: -10px; width: 18px; height: 18px; min-height: 0; margin-left: -9px; padding: 0; border-radius: 50%; border: 2px solid var(--panel); background: var(--muted); }
+.fxdot.on { background: var(--hit); width: 22px; height: 22px; margin-left: -11px; bottom: -12px; z-index: 1; }
+#fx-msg:empty { display: none; }
+body.sheetopen { padding-bottom: calc(var(--sheet-h, 0px) + 24px); }
+body.sheetopen .toast { bottom: calc(var(--sheet-h, 0px) + 12px); }
+/* folders in the library list */
+.folderrow { display: flex; align-items: center; gap: 8px; padding: 4px 14px; border-top: 1px solid var(--line); background: var(--bg); }
+.folderrow:first-child { border-top: 0; }
+.folderrow.plain { padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.foldertoggle { flex: 1; min-width: 0; border: 0; background: none; padding: 6px 0; justify-content: flex-start; gap: 8px; font-size: 15px; text-align: left; }
+.foldertoggle .caret { width: 1em; color: var(--muted); }
+.foldertoggle .fname { overflow-wrap: anywhere; }
+.foldertoggle .count { color: var(--muted); font-weight: 500; font-size: 13px; white-space: nowrap; }
+button.small { padding: 4px 10px; font-size: 13px; }
+.folderform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; padding: 4px 0; }
+.folderform input { flex: 1 1 160px; width: auto; }
+.tabrow.infolder { padding-left: 30px; }
+/* activity */
+.act { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--line); }
+.act:first-child { border-top: 0; }
+.acttext { min-width: 0; overflow-wrap: anywhere; }
+.act button.link { min-height: 0; display: inline; text-align: left; }
+.act .when { color: var(--muted); font-size: 13px; white-space: nowrap; }
+#actmsg:empty { display: none; }
+h2.gap { margin-top: 10px; }
+
+@media (pointer: coarse), (max-width: 640px) {
+  input[type="number"] { font-size: 16px; min-height: 44px; }
+  .chipx { width: 36px; height: 36px; }
+  .chip { padding-left: 14px; font-size: 14px; }
+  .fxdot { width: 22px; height: 22px; margin-left: -11px; bottom: -12px; }
+  .fxdot.on { width: 28px; height: 28px; margin-left: -14px; bottom: -15px; }
+  .fxstrip { margin-bottom: 12px; }
+  button.small { padding: 4px 14px; }
+}
+/* small screens: what is switched on stays on one line (it scrolls sideways if it has to) */
+@media (max-width: 640px), (max-height: 520px), (pointer: coarse) {
+  .strip { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .hint { flex: 1 1 auto; min-width: 0; font-size: 14px; }
+  #modedone { flex: none; }
+}
+@media (max-width: 640px) {
+  .wide { display: none; }
+  .narrow { display: inline; }
+  #fx-grid { flex: 1 1 120px; min-width: 0; }
+  .report { font-size: 13px; }
+  .tabrow.infolder { padding-left: 20px; }
+  .sheet { gap: 6px; }
+  .fxrow > button:not(.step) { flex: 1 1 auto; justify-content: center; }
+}
+/* the smallest phones: six buttons still fit on one row */
+@media (max-width: 350px) {
+  .sheet button:not(.step):not(.chipx):not(.fxdot) { padding-inline: 8px; font-size: 13px; }
+  .sheet .step { width: 40px; } .sheet .ctl { gap: 6px; }
+  #fx-grid { flex-basis: 96px; padding-inline: 4px; }
+  #fx-note { font-size: 13px; }
+}
+@media (max-width: 350px) { .tbtn { flex-basis: 40px; min-width: 40px; } .transport { gap: 6px; } #play { flex-basis: 50px; padding-inline: 4px; font-size: 14px; } }
+/* short screens: the editor never takes more than the room left under one line of music */
+.sheet { max-height: min(72vh, calc(100vh - 204px)); max-height: min(72dvh, calc(100dvh - 204px)); }
+@media (max-height: 520px) and (orientation: landscape) {
+  /* a phone on its side: one compact block with the most-used buttons on its first lines; the rest is a short scroll away */
+  .sheet { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-top: 6px; max-height: calc(100vh - 182px); max-height: calc(100dvh - 182px); }
+  .sheethead { display: contents; }
+  .fxtitle { order: 1; flex: 0 0 auto; }
+  #fx-state { display: none; }
+  .fxnote { order: 2; flex: 1 1 240px; }
+  #fx-nextunsure { order: 3; }
+  #fx-close { order: 4; }
+  .fxstrip { order: 5; flex: 1 1 100%; height: 34px; margin-bottom: 10px; }
+  .fxrow:not(.fxnote) { display: contents; }
+  #fx-earlier, #fx-later, #fx-grid { order: 6; }
+  #fx-hear { order: 7; }
+  #fx-save { order: 8; }
+  .sheet .ctl, #fx-even, #fx-reset { order: 9; }
+  .sheet .grow { display: none; }
+  #fx-msg { order: 10; flex: 1 1 100%; }
+}
 </style>
 </head>
 <body>
@@ -352,7 +475,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
       <button type="button" id="nav-lib" data-view="lib">Sign in</button>
       <button type="button" id="nav-practice" data-view="practice" hidden>Practice</button>
       <button type="button" id="nav-tuner" data-view="tuner">Tuner</button>
-      <button type="button" id="nav-members" data-view="members" hidden>Members</button>
+      <button type="button" id="nav-members" data-view="members" hidden>Activity</button>
     </nav>
     <div id="account" class="row" hidden>
       <span id="who"></span>
@@ -433,6 +556,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h5l2 2.5h8A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></svg><span class="lbl">Open a file</span><input type="file" id="file" aria-label="Open a file" accept=".pdf,.txt,application/pdf,text/plain"></label>
     </div>
     <p id="status" role="status" aria-live="polite"></p>
+    <p id="report" class="report" hidden></p>
 
     <div class="deck" id="deck" aria-label="Playback">
       <div class="row transport">
@@ -445,6 +569,9 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
         </button>
         <button id="nextbar" class="tbtn" type="button" aria-label="Forward one bar" title="Forward one bar (right arrow)">
           <span class="lbl">Bar</span><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5.5v13l9-6.5zM3 5.5v13l9-6.5z"/></svg>
+        </button>
+        <button id="boardbtn" class="tbtn toggle" type="button" aria-pressed="true" aria-label="Fretboard" title="Show or hide the fretboard (F)">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 6.5h19v11h-19zm2 2v7h3.2v-7zm5.2 0v7h3.6v-7zm5.6 0v7h4.2v-7z"/><circle cx="11.5" cy="12" r="1.7"/></svg><span class="lbl">Fretboard</span>
         </button>
         <button id="optbtn" class="tbtn" type="button" aria-expanded="false" aria-controls="opts" aria-label="Options" title="Options">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 6h9v2H3zm13 0h5v2h-5zM3 11h4v2H3zm8 0h10v2H11zM3 16h11v2H3zm15 0h3v2h-3z"/><circle cx="14" cy="7" r="2.6"/><circle cx="9" cy="12" r="2.6"/><circle cx="16" cy="17" r="2.6"/></svg>
@@ -472,12 +599,25 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
         <label class="ctl" for="metro"><input type="checkbox" id="metro">Metronome</label>
         <label class="ctl" for="loop"><input type="checkbox" id="loop">Loop</label>
         <label class="ctl" for="muteg"><input type="checkbox" id="muteg">Mute guitar</label>
-        <label class="ctl" for="showboard"><input type="checkbox" id="showboard" checked>Fretboard</label>
+        <button id="secbtn" class="toggle" type="button" aria-pressed="false" title="Repeat a few bars over and over">Loop a section</button>
+        <label class="ctl" for="trainer" title="Starts slow and gets faster after every pass through the looped section (or the whole tab)"><input type="checkbox" id="trainer">Speed trainer</label>
+        <span class="ctl" id="trainctl" role="group" aria-label="Speed trainer" hidden>from
+          <input type="number" id="tr-start" inputmode="numeric" min="20" max="220" step="1" aria-label="Starting tempo, in BPM">
+          <span>+</span><input type="number" id="tr-step" inputmode="numeric" min="1" max="40" step="1" aria-label="BPM added after each pass">
+          <span>each pass, up to</span><input type="number" id="tr-target" inputmode="numeric" min="20" max="220" step="1" aria-label="Target tempo, in BPM"><span>BPM</span>
+        </span>
+        <button id="fixbtn" class="toggle" type="button" aria-pressed="false" title="See which bars the reader was unsure about, and correct a bar's rhythm" hidden>Check rhythm</button>
         <span class="ctl" id="zoomctl" role="group" aria-label="Page size" hidden>Page size
           <button id="zoomout" class="step" type="button" aria-label="Smaller page">&minus;</button>
           <b id="zoomv">100%</b>
           <button id="zoomin" class="step" type="button" aria-label="Larger page">+</button>
         </span>
+      </div>
+      <div class="row strip" id="strip" hidden>
+        <span id="modehint" class="hint" role="status" aria-live="polite" hidden></span>
+        <button id="modedone" type="button" hidden>Done</button>
+        <span id="secchip" class="chip" hidden><span id="sectext"></span><button id="secclear" class="chipx" type="button" aria-label="Stop looping this section">&times;</button></span>
+        <span id="trainchip" class="chip" hidden></span>
       </div>
       <div id="board"></div>
     </div>
@@ -491,6 +631,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
         <label class="ctl" for="volg">Guitar <input type="range" id="volg" min="0" max="100" value="80"></label>
         <label class="ctl" for="volm">Metronome <input type="range" id="volm" min="0" max="100" value="60"></label>
         <label class="ctl" for="room">Room <input type="range" id="room" min="0" max="100" value="25"></label>
+        <label class="ctl" id="strumctl" for="strum" title="Chords of three or more notes are rolled from the lowest string up, the way a thumb or pick strums them"><input type="checkbox" id="strum">Strum chords</label>
       </div>
       <p class="note">Nylon guitar recordings: FluidR3_GM soundfont, Creative Commons Attribution 3.0, prepared for the web by the <a href="https://gleitz.github.io/midi-js-soundfonts" target="_blank" rel="noopener">MIDI.js Soundfonts</a> project.</p>
       <dl class="keys kbd">
@@ -501,6 +642,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
         <dt>L</dt><dd>Loop on or off</dd>
         <dt>M</dt><dd>Metronome on or off</dd>
         <dt>G</dt><dd>Mute or unmute the guitar</dd>
+        <dt>F</dt><dd>Show or hide the fretboard</dd>
       </dl>
     </details>
 
@@ -527,7 +669,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
     <div id="daybars" class="daybars" role="img" aria-label="Minutes practised on each of the last 14 days"></div>
     <h3>By tab</h3>
     <ul id="practlist" class="list"></ul>
-    <p class="note">Time counts while a tab from the library is playing. A day counts toward the streak once you have played for a minute. Each of you has your own log.</p>
+    <p class="note">Time counts while a tab from the library is playing. A day counts toward the streak once you have played for a minute. Each of you has your own log. The Activity screen shows both of you which tabs were practised and for how long.</p>
   </section>
 
   <section id="view-tuner" hidden>
@@ -566,7 +708,10 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
   </section>
 
   <section id="view-members" hidden>
-    <h2>Members</h2>
+    <h2>Activity</h2>
+    <p id="actmsg" class="muted" role="status" aria-live="polite"></p>
+    <ul id="actlist" class="list"></ul>
+    <h2 class="gap">Members</h2>
     <p id="memmsg" class="muted" role="status" aria-live="polite"></p>
     <ul id="memlist" class="list"></ul>
     <div id="ownerbox" class="card" hidden>
@@ -583,6 +728,40 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
     </div>
   </section>
 
+  <div id="fixsheet" class="sheet" role="dialog" aria-labelledby="fx-title" hidden>
+    <div class="sheethead">
+      <div class="fxtitle"><h3 id="fx-title">Bar</h3><p id="fx-state" class="meta"></p></div>
+      <button id="fx-nextunsure" class="small" type="button" aria-label="Next bar to check" hidden>Next<span class="wide">&nbsp;to check</span>&nbsp;&rsaquo;</button>
+      <button id="fx-close" class="chipx big" type="button" aria-label="Close without saving">&times;</button>
+    </div>
+    <div id="fx-strip" class="fxstrip" role="group" aria-label="Where each note falls in the bar"></div>
+    <div class="fxrow fxnote">
+      <button id="fx-prev" class="step" type="button" aria-label="Previous note">&lsaquo;</button>
+      <span id="fx-note" role="status" aria-live="polite"></span>
+      <button id="fx-next" class="step" type="button" aria-label="Next note">&rsaquo;</button>
+    </div>
+    <div class="fxrow">
+      <button id="fx-earlier" type="button">&#9664; Earlier</button>
+      <button id="fx-later" type="button">Later &#9654;</button>
+      <select id="fx-grid" aria-label="How far each press moves the note"><option value="6" selected>by a 16th note</option><option value="12">by an 8th note</option><option value="24">by a quarter note</option><option value="8">by a triplet 8th</option></select>
+    </div>
+    <div class="fxrow">
+      <span class="ctl" role="group" aria-label="Beats in this bar">Beats<span class="wide">&nbsp;in this bar</span>
+        <button id="fx-bminus" class="step" type="button" aria-label="Half a beat shorter">&minus;</button>
+        <b id="fx-beats">4</b>
+        <button id="fx-bplus" class="step" type="button" aria-label="Half a beat longer">+</button>
+      </span>
+      <button id="fx-even" type="button" title="Give every note in the bar the same length">Spread evenly</button>
+    </div>
+    <div class="fxrow">
+      <button id="fx-hear" type="button">Hear it</button>
+      <button id="fx-reset" type="button" aria-label="Back to automatic"><span class="wide">Back to automatic</span><span class="narrow">Automatic</span></button>
+      <span class="grow"></span>
+      <button id="fx-save" class="primary" type="button">Save</button>
+    </div>
+    <p id="fx-msg" class="note" role="status" aria-live="polite"></p>
+  </div>
+  <datalist id="folderlist"></datalist>
   <p class="note build" id="build"></p>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden><span id="toasttext"></span> <button id="toastbtn" class="link" type="button" hidden></button></div>
 </div>
@@ -593,7 +772,7 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<script>window.__BUILD = "2026-11-12 13:01";</script>
+<script>window.__BUILD = "2026-11-12 20:02";</script>
 <script>
 /* Nylon-string guitar, one short recording per note (MIDI note number -> MP3, base64).
    From the FluidR3_GM soundfont, Creative Commons Attribution 3.0, as prepared for the web by the MIDI.js Soundfonts project
@@ -1273,7 +1452,7 @@ function analyzeRhythm(eng, beatsOverride) {
 // The order bars are played in, following repeat signs and 1st/2nd endings.
 function playOrder(eng, follow) {
   var list = [];
-  eng.systems.forEach(function (sys, si) { sys.measures.forEach(function (m) { list.push({ m: m, si: si }); }); });
+  eng.systems.forEach(function (sys, si) { sys.measures.forEach(function (m) { list.push({ m: m, si: si, mi: list.length }); }); });
   var order = [], i = 0, start = 0, taken = {}, second = false, guard = 0;
   while (i < list.length && guard++ < 5000) {
     var m = list[i].m;
@@ -1292,13 +1471,49 @@ function playOrder(eng, follow) {
 }
 function hasRepeats(eng) { return eng.systems.some(function (s) { return s.measures.some(function (m) { return m.endRep; }); }); }
 
-// Timed events for playback. Beats are quarter notes.
-function engravedTimeline(eng, beatsOverride, follow) {
-  analyzeRhythm(eng, beatsOverride);
+// The rhythm analysis is the slow part and depends only on the forced bar length, so it is done once and kept.
+function ensureAnalyzed(eng, beatsOverride) {
+  var key = "b" + (beatsOverride || 0);
+  if (eng._an !== key) { analyzeRhythm(eng, beatsOverride); eng._an = key; }
+}
+function mainCols(m) { return m.cols.filter(function (c) { return !c.grace; }); }
+// A correction made by hand for one printed bar: { beats, at: [start of each note in beats from the barline] }.
+// It only counts if it still fits the bar as it is read now: one start per note, in order, all inside the bar.
+function validFix(fx, m) {
+  if (!fx || typeof fx.beats !== "number" || !(fx.beats > 0 && fx.beats <= 16) || !Array.isArray(fx.at)) return false;
+  if (fx.at.length !== mainCols(m).length) return false;
+  for (var i = 0; i < fx.at.length; i++) {
+    var v = fx.at[i];
+    if (typeof v !== "number" || !(v >= 0) || v >= fx.beats || (i && v <= fx.at[i - 1])) return false;
+  }
+  return true;
+}
+// One entry per printed bar: how it was read, how sure the reading is, and whether a correction is in force.
+// A bar is "unsure" when no rhythm on the grid explained its spacing and written note lengths well.
+var UNSURE_COST = 2.5;
+function barReport(eng, beatsOverride, fixes) {
+  ensureAnalyzed(eng, beatsOverride);
+  var out = [];
+  eng.systems.forEach(function (sys, si) {
+    sys.measures.forEach(function (m) {
+      var cols = mainCols(m), auto = [], mi = out.length;
+      cols.forEach(function (c) {
+        for (var k = 0; k < m.slots.length; k++) if (m.slots[k].col === c) { auto.push(m.pos ? Math.round(m.pos[k]) / TPB : 0); break; }
+      });
+      out.push({ mi: mi, si: si, m: m, cols: cols, pickup: !!m.pickup, autoBeats: m.T / TPB, auto: auto,
+        fixed: !!(fixes && validFix(fixes[mi], m)), unsure: cols.length > 0 && (m.fitCost < 0 || m.fitCost >= UNSURE_COST) });
+    });
+  });
+  return out;
+}
+
+// Timed events for playback. Beats are quarter notes. fixes: corrections by printed bar number (see validFix).
+function engravedTimeline(eng, beatsOverride, follow, fixes) {
+  ensureAnalyzed(eng, beatsOverride);
   var events = [], clicks = [], bars = [], t = 0, maxFret = 0, lastMain = -8;
   playOrder(eng, follow !== false).forEach(function (o) {
-    var m = o.m, beats = m.T / TPB, pend = [];
-    bars.push({ beat: t, beats: beats, pickup: !!m.pickup, sys: o.si, xa: m.xa, xb: m.xb, first: !!m.firstInSys });
+    var m = o.m, fx = fixes && validFix(fixes[o.mi], m) ? fixes[o.mi] : null, beats = fx ? fx.beats : m.T / TPB, pend = [], main = 0;
+    bars.push({ beat: t, beats: beats, pickup: !!m.pickup, sys: o.si, mi: o.mi, xa: m.xa, xb: m.xb, first: !!m.firstInSys });
     var barIdx = bars.length - 1;
     m.cols.forEach(function (c) {
       var ev = { beat: t, sys: o.si, bar: barIdx, x: c.x, notes: c.notes.map(function (nt) {
@@ -1306,8 +1521,11 @@ function engravedTimeline(eng, beatsOverride, follow) {
         return { line: nt.line, fret: fret, midi: eng.tuning[nt.line] + fret + eng.info.capo, x: nt.x, w: nt.w, legato: !!nt.legato, slide: !!nt.slide, tied: !!nt.tied, from: nt.from };
       }) };
       events.push(ev);
-      if (c.grace) { pend.push(ev); return; }
-      for (var si = 0; si < m.slots.length; si++) if (m.slots[si].col === c) { ev.beat = t + m.pos[si] / TPB; break; }
+      if (c.grace) { ev.grace = true; pend.push(ev); return; }
+      ev.col = main;
+      if (fx) ev.beat = t + fx.at[main];
+      else for (var si = 0; si < m.slots.length; si++) if (m.slots[si].col === c) { ev.beat = t + m.pos[si] / TPB; break; }
+      main++;
       if (pend.length) {
         // a grace note takes a sixteenth of a beat at most, shared out if there are several, and never
         // more than part of the gap since the note before it
@@ -1323,7 +1541,7 @@ function engravedTimeline(eng, beatsOverride, follow) {
   events.sort(function (a, b) { return a.beat - b.beat; });
   return { events: events, clicks: clicks, bars: bars, total: t, maxFret: maxFret };
 }
-if (typeof module !== "undefined") module.exports = { getPageData: getPageData, extractEngraved: extractEngraved, engravedTimeline: engravedTimeline, analyzeRhythm: analyzeRhythm, playOrder: playOrder, hasRepeats: hasRepeats };
+if (typeof module !== "undefined") module.exports = { getPageData: getPageData, extractEngraved: extractEngraved, engravedTimeline: engravedTimeline, analyzeRhythm: analyzeRhythm, playOrder: playOrder, hasRepeats: hasRepeats, barReport: barReport, validFix: validFix };
 </script>
 
 <script>
@@ -1336,7 +1554,11 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   var mode = "text", blocks = [], steps = [], eng = null, pdfEvents = [], barList = [], pageEls = [], rings = [];
   var items = [], total = 0, pos = 0, shownItem = -1, lit = [], liveBlock = -1, liveSys = -1;
   var ctx = null, master = null, guitarGain = null, clickGain = null, wetGain = null, playing = false, starting = false, playTok = 0, timer = null, nextTime = 0, vq = [], voices = {}, bufs = new Map();
-  var board = null, loadId = 0, writtenTempo = null, hooks = { play: null, pause: null, changed: null };
+  var board = null, loadId = 0, writtenTempo = null, hooks = { play: null, pause: null, changed: null, saveFix: null, dropFix: null };
+  // practice tools: a looped section (printed bar numbers a..b), the speed trainer, a one-bar preview; and hand corrections
+  var section = null, secSet = {}, range = null, picking = null, pickA = -1, preview = null, textBars = [];
+  var trainer = { on: false, start: 0, step: 5, target: 0, base: 0, pass: 0 };
+  var fixes = {}, fixMeta = {}, report = [], barBoxes = [], fx = null;
   var NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   var reduced = function () { return matchMedia("(prefers-reduced-motion: reduce)").matches; };
   var fingers = navigator.maxTouchPoints > 0, smallScreen = Math.min(screen.width, screen.height) < 700;
@@ -1367,17 +1589,316 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     items = [];
     if (mode === "text") {
       var div = +divEl.value;
-      steps.forEach(function (st, i) { items.push({ beat: i / div, notes: st.notes, click: st.sinceBar % div === 0 ? (st.sinceBar === 0 ? 2 : 1) : 0, vis: i }); });
+      textBars = []; report = [];
+      steps.forEach(function (st, i) {
+        items.push({ beat: i / div, notes: st.notes, click: st.sinceBar % div === 0 ? (st.sinceBar === 0 ? 2 : 1) : 0, vis: i });
+        var tb = textBars[textBars.length - 1];
+        if (st.sinceBar === 0) textBars.push({ b: st.b, c0: st.col, c1: st.col + 1, s0: i });
+        else if (tb && tb.b === st.b) tb.c1 = st.col + 1;
+      });
       total = steps.length / div;
     } else {
-      var tl = engravedTimeline(eng, +beatsEl.value || 0, $("reps").checked);
+      var bo = +beatsEl.value || 0, tl = engravedTimeline(eng, bo, $("reps").checked, fixes);
+      report = barReport(eng, bo, fixes);
       pdfEvents = tl.events; total = tl.total; barList = tl.bars;
       tl.events.forEach(function (e, i) { items.push({ beat: e.beat, notes: e.notes, click: 0, vis: i }); });
       tl.clicks.forEach(function (c) { items.push({ beat: c.beat, notes: [], click: c.accent ? 2 : 1, vis: -1 }); });
       items.sort(function (a, b) { return a.beat - b.beat || a.vis - b.vis; });
     }
-    buildPath();
+    buildPath(); computeRange(); paintBars();
     warmSound();   // start decoding the recordings this tab needs, in the background
+  }
+
+  /* ----- looping a section, and playing one bar on its own ----- */
+  // the stretch of music from the first time printed bar a is played to the end of the next time bar b is: [from, to, first, last]
+  function barSpan(a, b) {
+    var s = -1, e = -1, k;
+    for (k = 0; k < barList.length; k++) if (barList[k].mi === a) { s = k; break; }
+    if (s < 0) return null;
+    for (k = s; k < barList.length; k++) if (barList[k].mi === b) { e = k; break; }
+    if (e < 0) e = s;
+    return [barList[s].beat, barList[e].beat + barList[e].beats, s, e];
+  }
+  // range: the items that play when a section is looped (or one bar is being previewed); null means the whole tab
+  function computeRange() {
+    range = null; secSet = {};
+    var sp = null, k, i;
+    if (section && mode === "text") {
+      var div = +divEl.value, a = textBars[section.a], b = textBars[section.b];
+      if (a && b) { sp = [a.s0 / div, section.b + 1 < textBars.length ? textBars[section.b + 1].s0 / div : total]; for (k = section.a; k <= section.b; k++) secSet[k] = 1; }
+    } else if (section) {
+      sp = barSpan(section.a, section.b);
+      if (sp) for (k = sp[2]; k <= sp[3]; k++) secSet[barList[k].mi] = 1;
+    }
+    if (preview) sp = barSpan(preview.mi, preview.mi);
+    if (!sp) return;
+    var i0 = items.length, i1 = items.length, has = false;
+    for (i = 0; i < items.length; i++) if (items[i].beat >= sp[0] - 1e-6) { i0 = i; break; }
+    for (i = i0; i < items.length; i++) if (items[i].beat >= sp[1] - 1e-6) { i1 = i; break; }
+    for (i = i0; i < i1; i++) if (items[i].vis >= 0) { has = true; break; }
+    if (has) range = { i0: i0, i1: i1, from: sp[0], to: sp[1], once: !!preview };
+  }
+  // bar numbers the way a score counts them: a pickup is not bar 1
+  function barNum(mi) { return mode === "pdf" && report[0] && report[0].pickup ? mi : mi + 1; }
+  function barName(mi) { return barNum(mi) === 0 ? "the pickup bar" : "bar " + barNum(mi); }
+  function firstVisFrom(i) { while (i < items.length - 1 && items[i].vis < 0) i++; return i; }
+  // colour the bars on the page: the looped section always; in check mode also the unsure and the corrected ones
+  function paintBars() {
+    tabEl.classList.toggle("picking", !!picking); tabEl.classList.toggle("checking", picking === "fix");
+    if (mode === "pdf") barBoxes.forEach(function (d, mi) {
+      var r = report[mi] || {};
+      d.className = "barbox" + (secSet[mi] ? " sec" : "") + (r.fixed ? " fixed" : r.unsure ? " unsure" : "") + (fx && fx.mi === mi ? " editing" : "");
+    });
+    else {
+      Array.prototype.forEach.call(tabEl.querySelectorAll(".secbox"), function (n) { n.remove(); });
+      textBars.forEach(function (tb, k) {
+        var b = blocks[tb.b]; if (!secSet[k] || !b || !b.inner) return;
+        var d = el("div", "secbox");
+        d.style.top = b.ph.style.top; d.style.height = b.ph.style.height; d.style.left = tb.c0 + "ch"; d.style.width = (tb.c1 - tb.c0) + "ch";
+        b.inner.appendChild(d);
+      });
+    }
+    paintStrip(); paintReport();
+  }
+  // a label with a full wording for wide screens and a short one for phones
+  function two(node, full, brief) {
+    var w = el("span", "wide"), n = el("span", "narrow");
+    w.textContent = full; n.textContent = brief; node.textContent = ""; node.appendChild(w); node.appendChild(n);
+  }
+  // the line under the buttons that says what is switched on, or what to tap next
+  function paintStrip() {
+    var sec = picking === "sec1" || picking === "sec2";
+    $("modehint").hidden = $("modedone").hidden = !picking;
+    if (picking) $("modehint").textContent = picking === "sec1" ? "Tap the first bar of the section." : picking === "sec2" ? "Now tap the last bar." : "Tap any bar to check or correct its rhythm.";
+    $("modedone").textContent = picking === "fix" ? "Done" : "Cancel";
+    $("secchip").hidden = !section || sec;
+    if (section) {
+      var a = barName(section.a), b = barName(section.b);
+      // (a phone gets the short wording, so both labels fit on one line)
+      two($("sectext"), "Looping " + (section.a === section.b ? a : /^bar /.test(a) ? "bars " + barNum(section.a) + " to " + barNum(section.b) : a + " to " + b),
+        "Loop " + (section.a === section.b ? a : /^bar /.test(a) ? "bars " + barNum(section.a) + "\u2013" + barNum(section.b) : a + " to " + b));
+    }
+    $("trainchip").hidden = !trainer.on || !!picking;
+    if (trainer.on) {
+      if (trainer.pass && !preview) two($("trainchip"), "Trainer: pass " + trainer.pass + ", " + (+bpmEl.value) + " of " + trainer.target + " BPM", "Pass " + trainer.pass + ": " + (+bpmEl.value) + " BPM");
+      else two($("trainchip"), "Trainer: " + trainer.start + " to " + trainer.target + " BPM, +" + trainer.step + " a pass", "Trainer " + trainer.start + "\u2013" + trainer.target);
+    }
+    $("strip").hidden = !picking && !section && !trainer.on;
+    $("secbtn").setAttribute("aria-pressed", String(sec || !!section));
+    $("fixbtn").hidden = mode !== "pdf"; $("fixbtn").setAttribute("aria-pressed", String(picking === "fix"));
+    fitDeck();
+  }
+  // after a printed page is read: how many bars the reader was unsure about
+  function paintReport() {
+    var p = $("report"); p.textContent = "";
+    if (mode !== "pdf" || !report.length) { p.hidden = true; return; }
+    var todo = report.filter(function (r) { return r.unsure && !r.fixed; }), done = report.filter(function (r) { return r.fixed; }).length, s = el("span");
+    s.textContent = "Reading check: " + (todo.length ? todo.length + " of " + report.length + " bars are worth a second look" : "all " + report.length + " bars were read with confidence") +
+      (done ? ", " + done + " corrected by hand" : "") + ". ";
+    p.appendChild(s);
+    p.appendChild(btn(todo.length ? "Review them" : "Check a bar", "small", function () { startFixMode(todo.length ? todo[0].mi : -1); }));
+    p.hidden = false;
+  }
+  function setOpts(open) { deckEl.classList.toggle("open", open); $("optbtn").setAttribute("aria-expanded", String(open)); fitDeck(); }
+  // a bar on the page (or in a text tab) was tapped while choosing a section or checking the rhythm
+  function barTap(mi) {
+    if (picking === "fix") { openFix(mi); return; }
+    if (picking === "sec1") { pickA = mi; picking = "sec2"; secSet = {}; secSet[mi] = 1; paintBars(); return; }
+    if (picking !== "sec2") return;
+    section = { a: Math.min(pickA, mi), b: Math.max(pickA, mi) }; picking = null; trainer.pass = 0;
+    computeRange(); paintBars(); changed();
+    if (!range) { toast("There are no notes in that section, so the whole tab will play."); return; }
+    if (!playing) { pos = range.i0; show(firstVisFrom(pos), false); revealIfHidden(); }
+  }
+  function clearSection() { section = null; trainer.pass = 0; picking = picking === "fix" ? picking : null; computeRange(); paintBars(); changed(); }
+  function textBarAt(bi, col) {
+    var hit = -1;
+    textBars.forEach(function (tb, k) { if (tb.b === bi && (hit < 0 || tb.c0 <= col)) hit = k; });
+    return hit;
+  }
+
+  /* ----- speed trainer: start slow, get faster after every pass ----- */
+  function trainerFields() {
+    var num = function (id, lo, hi, d) { var v = Math.round(+$(id).value); return isFinite(v) && v > 0 ? Math.max(lo, Math.min(hi, v)) : d; };
+    trainer.target = num("tr-target", 21, 220, trainer.target || Math.max(21, Math.round(+bpmEl.value)));
+    trainer.start = Math.min(trainer.target - 1, num("tr-start", 20, 219, Math.max(20, Math.round(trainer.target * 0.7))));
+    trainer.step = num("tr-step", 1, 40, trainer.step || 5);
+    $("tr-target").value = trainer.target; $("tr-start").value = trainer.start; $("tr-step").value = trainer.step;
+  }
+  function setTrainer(on, quiet) {
+    if (on && !trainer.on) { trainer.base = +bpmEl.value; trainerFields(); }
+    if (!on && trainer.on && trainer.base) { bpmEl.value = trainer.base; showTempo(); }   // back to the tempo it was at
+    trainer.on = on; trainer.pass = 0; $("trainer").checked = on; $("trainctl").hidden = !on;
+    paintStrip(); if (!quiet) changed();
+  }
+  // one pass through the loop is over
+  function passDone() {
+    if (!trainer.on || preview) return;
+    trainer.pass++;
+    var v = Math.min(trainer.target, +bpmEl.value + trainer.step);
+    if (v !== +bpmEl.value) { bpmEl.value = v; showTempo(); }
+    paintStrip();
+  }
+  // what the library saves for each person and tab, and puts back when the tab is opened again
+  function practiceState() { return { bpm: trainer.on && trainer.base ? trainer.base : +bpmEl.value, loop: section ? [section.a, section.b] : null, trainer: trainer.target ? { on: trainer.on, start: trainer.start, step: trainer.step, target: trainer.target } : null }; }
+  function applyPractice(set) {
+    var n = mode === "pdf" ? report.length : textBars.length, l = set && set.loop, t = set && set.trainer;
+    section = null;
+    if (Array.isArray(l) && l.length === 2 && l[0] === (l[0] | 0) && l[1] === (l[1] | 0) && l[0] >= 0 && l[1] >= l[0] && l[1] < n) section = { a: l[0], b: l[1] };
+    if (t && t.target > 0) { $("tr-target").value = t.target; $("tr-start").value = t.start; $("tr-step").value = t.step; trainer.target = 0; trainerFields(); }
+    setTrainer(!!(t && t.on && t.target > 0), true);
+    computeRange(); paintBars();
+  }
+
+  /* ----- fix-it: correct how one printed bar is read ----- */
+  function setFixes(map, meta) { fixes = map || {}; fixMeta = meta || {}; if (mode === "pdf" && eng) rebuild(); }
+  // the timing changed: rebuild what is played, staying on the same note
+  function rebuild() { reschedule(); if (shownItem >= 0) show(shownItem, false); }
+  function startFixMode(mi) {
+    if (mode !== "pdf") return;
+    picking = "fix"; setOpts(false); paintBars();
+    if (mi >= 0) openFix(mi);
+  }
+  function endFixMode() { closeFix(true); if (picking === "fix") picking = null; paintBars(); }
+  // the schedule item for note k of printed bar mi, the first time that bar is played
+  function fixItem(mi, k) {
+    var bi = -1, i;
+    for (i = 0; i < barList.length; i++) if (barList[i].mi === mi) { bi = i; break; }
+    for (i = 0; i < pdfEvents.length; i++) if (pdfEvents[i].bar === bi && pdfEvents[i].col === k) return itemOfVis(i);
+    return -1;
+  }
+  function openFix(mi) {
+    var r = report[mi]; if (!r) return;
+    if (fx && fx.mi === mi) return;
+    closeFix(true);
+    if (playing) pause();
+    var cur = r.fixed ? fixes[mi] : { beats: r.autoBeats, at: r.auto };
+    fx = { mi: mi, orig: r.fixed ? fixes[mi] : null, beats: Math.round(cur.beats * TPB), at: cur.at.map(function (v) { return Math.round(v * TPB); }), sel: 0, dirty: false, msg: "" };
+    $("fixsheet").hidden = false; sheetRoom();
+    paintFix(); paintBars(); fixFocus(true);   // (paintBars also lets go of the pinned controls: see fitDeck)
+  }
+  function closeFix(discard) {
+    if (!fx) return;
+    var was = fx; fx = null;
+    if (playing) pause();
+    $("fixsheet").hidden = true; sheetRoom();
+    if (discard && was.dirty) {
+      if (was.orig) fixes[was.mi] = was.orig; else delete fixes[was.mi];
+      rebuild(); toast("The changes to " + barName(was.mi) + " were not saved.");
+    }
+    paintBars();
+  }
+  // leave room at the bottom of the page for the editor, so the last line of music can still scroll clear of it
+  function sheetRoom() {
+    var h = $("fixsheet").hidden ? 0 : $("fixsheet").offsetHeight;
+    document.body.style.setProperty("--sheet-h", h + "px"); document.body.classList.toggle("sheetopen", h > 0);
+  }
+  // show the chosen note on the page
+  function fixFocus(scroll) {
+    var i = fx && fx.at.length ? fixItem(fx.mi, fx.sel) : -1;
+    if (i >= 0) { pos = i; show(i, false); if (scroll) reveal(i); }
+    else if (scroll && fx && barBoxes[fx.mi]) scrollToY(barBoxes[fx.mi].getBoundingClientRect().top);
+  }
+  function fixDraft() {
+    fx.dirty = true; fx.msg = "";
+    fixes[fx.mi] = { beats: fx.beats / TPB, at: fx.at.map(function (v) { return v / TPB; }) };
+    rebuild(); paintFix(); fixFocus(false);
+  }
+  var FRAC = { 0: "", 3: "\u215b", 4: "\u2159", 6: "\u00bc", 8: "\u2153", 9: "\u215c", 12: "\u00bd", 15: "\u215d", 16: "\u2154", 18: "\u00be", 20: "\u215a", 21: "\u215e" };
+  function beatName(t) { var f = FRAC[t % TPB]; return "beat " + (Math.floor(t / TPB) + 1) + (f === undefined ? " +" + (t % TPB / TPB).toFixed(2).slice(1) : f); }
+  function beatCount(t) { var f = FRAC[t % TPB]; return (Math.floor(t / TPB) || (t % TPB ? "" : 0)) + (f === undefined ? (t % TPB / TPB).toFixed(2).slice(1) : f); }
+  // where the chosen note would land if moved one step earlier (-1) or later (1); null when a neighbour is in the way
+  function nudgeTo(dir) {
+    if (!fx || !fx.at.length) return null;
+    var g = +$("fx-grid").value, i = fx.sel, cur = fx.at[i], lo = i ? fx.at[i - 1] + 1 : 0, hi = (i + 1 < fx.at.length ? fx.at[i + 1] : fx.beats) - 1;
+    var t = dir > 0 ? (Math.floor(cur / g) + 1) * g : (Math.ceil(cur / g) - 1) * g;
+    return t < lo || t > hi ? null : t;
+  }
+  function paintFix() {
+    if (!fx) return;
+    var r = report[fx.mi], n = fx.at.length, strip = $("fx-strip"), who = fixMeta[fx.mi], i;
+    var more = report.filter(function (x) { return x.unsure && !x.fixed && x.mi !== fx.mi; });
+    $("fx-title").textContent = barName(fx.mi).replace(/^./, function (c) { return c.toUpperCase(); });
+    $("fx-nextunsure").hidden = !more.length;
+    $("fx-state").textContent = (fx.dirty ? "Changed, not saved" : r.fixed ? "Corrected by hand" + (who && who.by ? " by " + who.by : "") : r.unsure ? "The reader was not sure" : "The reader was confident") +
+      " \u00b7 " + n + (n === 1 ? " note" : " notes") + " \u00b7 " + beatCount(fx.beats) + (fx.beats === TPB ? " beat" : " beats");
+    strip.textContent = "";
+    for (i = 0; i * TPB <= fx.beats; i++) {
+      var tk = el("div", "fxtick" + (i * TPB === fx.beats ? " end" : "")), lb = el("span");
+      tk.style.left = i * TPB / fx.beats * 100 + "%";
+      if (i * TPB < fx.beats) { lb.textContent = i + 1; tk.appendChild(lb); }
+      strip.appendChild(tk);
+    }
+    if (fx.beats % TPB) { var en = el("div", "fxtick end"); en.style.left = "100%"; strip.appendChild(en); }
+    fx.at.forEach(function (t, k) {
+      var d = el("button", "fxdot" + (k === fx.sel ? " on" : "")); d.type = "button";
+      d.style.left = t / fx.beats * 100 + "%";
+      d.setAttribute("aria-label", "Note " + (k + 1) + ", " + beatName(t)); d.setAttribute("aria-pressed", String(k === fx.sel));
+      d.addEventListener("click", function () { fx.sel = k; paintFix(); fixFocus(false); });
+      strip.appendChild(d);
+    });
+    if (n) {
+      var ns = r.cols[fx.sel].notes.slice().sort(function (a, b) { return b.line - a.line; });
+      var what = ns.length > 2 ? "chord, frets " + ns.map(function (x) { return x.s; }).join(" ") : ns.map(function (x) { return "fret " + x.s + " on string " + (x.line + 1); }).join(" and ");
+      $("fx-note").textContent = "Note " + (fx.sel + 1) + " of " + n + " (" + what + ") starts on " + beatName(fx.at[fx.sel]);
+    } else $("fx-note").textContent = "This bar has no notes. Only its length can be changed.";
+    $("fx-beats").textContent = beatCount(fx.beats);
+    $("fx-prev").disabled = !n || fx.sel === 0; $("fx-next").disabled = !n || fx.sel >= n - 1;
+    $("fx-earlier").disabled = nudgeTo(-1) === null; $("fx-later").disabled = nudgeTo(1) === null;
+    $("fx-bminus").disabled = fx.beats - 12 < 12 || (n > 0 && fx.beats - 12 <= fx.at[n - 1]); $("fx-bplus").disabled = fx.beats + 12 > 16 * TPB;
+    $("fx-even").disabled = n < 2;
+    $("fx-reset").disabled = !r.fixed && !fx.dirty;
+    $("fx-save").disabled = !fx.dirty;
+    $("fx-hear").disabled = !n; $("fx-hear").textContent = playing || starting ? "Stop" : "Hear it";
+    $("fx-msg").textContent = fx.msg || "";
+    sheetRoom();
+  }
+  function hearBar() {
+    if (playing || starting) { pause(); return; }
+    preview = { mi: fx.mi }; computeRange();
+    if (!range) { preview = null; computeRange(); return; }
+    pos = range.i0; play(); paintFix();
+  }
+  function saveFix() {
+    if (!fx || !fx.dirty) return;
+    var mi = fx.mi, f = fixes[mi], job = hooks.saveFix ? hooks.saveFix(mi, f) : null;
+    fx.dirty = false; fx.orig = f; fixMeta[mi] = { by: "you" };
+    if (!job) { fx.msg = "Kept while this tab is open. Corrections are saved for both of you when the tab comes from the library."; paintFix(); paintBars(); return; }
+    fx.msg = "Saving\u2026"; paintFix(); paintBars();
+    job.then(function (err) {
+      if (!fx || fx.mi !== mi) { if (err) toast("The correction to " + barName(mi) + " could not be saved. " + err); return; }
+      if (err) { fx.dirty = true; fx.msg = "Not saved. " + err; } else fx.msg = "Saved for both of you.";
+      paintFix();
+    });
+  }
+  function resetFix() {
+    if (!fx) return;
+    var mi = fx.mi, had = !!fx.orig;
+    delete fixes[mi]; delete fixMeta[mi];
+    if (had && hooks.dropFix) hooks.dropFix(mi).then(function (err) { if (err) toast("Could not remove the saved correction. " + err); });
+    rebuild();
+    var r = report[mi];
+    fx = { mi: mi, orig: null, beats: Math.round(r.autoBeats * TPB), at: r.auto.map(function (v) { return Math.round(v * TPB); }), sel: 0, dirty: false, msg: "Back to how the reader read it." };
+    paintFix(); paintBars(); fixFocus(false);
+  }
+  // boxes over every printed bar: they carry the colours, and take the taps while a bar is being chosen
+  function buildBarBoxes() {
+    barBoxes = [];
+    eng.systems.forEach(function (sys) {
+      var pe = pageEls[sys.page];
+      sys.measures.forEach(function (m) {
+        var d = el("div", "barbox"), mi = barBoxes.length;
+        if (pe) {
+          d.style.left = m.xa / pe.W * 100 + "%"; d.style.width = (m.xb - m.xa) / pe.W * 100 + "%";
+          d.style.top = sys.sysTop / pe.H * 100 + "%"; d.style.height = (sys.bottom + sys.sp - sys.sysTop) / pe.H * 100 + "%";
+          d.setAttribute("data-bar", mi);
+          d.addEventListener("click", function (e) { e.stopPropagation(); barTap(mi); });
+          pe.ov.insertBefore(d, pe.ph);          // under the moving bar and the note rings
+        }
+        barBoxes.push(d);
+      });
+    });
+    paintBars();
   }
 
   /* ----- the path the bar glides along: where it should be at every beat ----- */
@@ -1491,6 +2012,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       b.steps.forEach(function (st) { steps.push({ b: bi, col: st.col, notes: st.notes, sinceBar: st.sinceBar }); });
       inner.addEventListener("click", function (e) {
         var col = Math.floor((e.clientX - inner.getBoundingClientRect().left) / charW()), idx = b.first + b.steps.length - 1;
+        if (picking) { var tb = textBarAt(bi, col); if (tb >= 0) barTap(tb); return; }
         for (var k = 0; k < b.steps.length; k++) if (b.steps[k].col >= col) { idx = b.first + k; break; }
         seek(itemOfVis(idx));
       });
@@ -1542,6 +2064,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       (function (pi) { wrap.addEventListener("click", function (e) { clickPage(pi, e); }); })(p - 1);
     }
     layoutPages(); lastTabW = tabEl.clientWidth;
+    buildBarBoxes();
     await rasterize(id);
   }
   // Draws every page at the sharpness the current size needs. Each page is drawn off screen and swapped in when ready,
@@ -1594,6 +2117,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     }
   }
   function clickPage(pi, e) {
+    if (picking) return;                     // a bar is being chosen: taps between the bars do nothing
     var pe = pageEls[pi], r = pe.wrap.getBoundingClientRect();
     var px = (e.clientX - r.left) / r.width * pe.W, py = (e.clientY - r.top) / r.height * pe.H, best = -1, bd = 1e9;
     eng.systems.forEach(function (s, si) { if (s.page !== pi) return; var d = Math.abs(py - (s.sysTop + s.bottom) / 2); if (d < bd) { bd = d; best = si; } });
@@ -1687,10 +2211,11 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   function boardKey() { return landscape.matches ? "boardl" : "boardp"; }
   function applyBoard() {
     var on = typeof prefs[boardKey()] === "boolean" ? prefs[boardKey()] : !shortLand.matches;
-    $("showboard").checked = on; deckEl.classList.toggle("noboard", !on); fitDeck();
+    $("boardbtn").setAttribute("aria-pressed", String(on)); deckEl.classList.toggle("noboard", !on); fitDeck();
   }
   // the controls stay pinned to the top of the screen unless they would cover most of it
-  function fitDeck() { deckEl.classList.remove("free"); deckEl.classList.toggle("free", deckEl.offsetHeight > window.innerHeight * 0.62); }
+  // (and while a bar is being corrected they scroll away with the page, so the bar has the room above the editor)
+  function fitDeck() { deckEl.classList.remove("free"); deckEl.classList.toggle("free", !!fx || deckEl.offsetHeight > window.innerHeight * 0.62); }
   // the screen changed size or turned: redraw what depends on its width
   function relayout() {
     if ($("view-player").hidden) return;
@@ -1823,6 +2348,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   }
   function pluck(n, t) {
     if (n.tied) return;                       // a tied note is not picked again: the string keeps ringing
+    if (window.__plucks) window.__plucks.push([n.line, +t.toFixed(4)]);   // test hook: when each string is picked
     var src = ctx.createBufferSource(), g = ctx.createGain(), soft = n.legato || n.slide, sm = useNylon() ? sampleFor(n.midi) : null, rate, amp, off = 0;
     if (sm) {
       src.buffer = sm.s.buf; rate = sm.rate; off = sm.s.off + (soft ? 0.012 : 0);
@@ -1860,18 +2386,24 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   /* ----- transport ----- */
   function tick() {
     while (playing && nextTime < ctx.currentTime + 0.15) {
-      var spb = 60 / +bpmEl.value;
-      if (pos >= items.length) {
-        if ($("loop").checked) { pos = 0; continue; }
+      var lim = range ? range.i1 : items.length, endBeat = range ? range.to : total;
+      if (pos >= lim) {
+        // the end of the looped section, or of the tab: go round again, or stop
+        if (!(range && range.once) && (range || $("loop").checked || trainer.on)) { pos = range ? range.i0 : 0; passDone(); continue; }
         vq.push({ i: -1, t: nextTime }); clearInterval(timer); timer = null; return;
       }
-      var it = items[pos], t0 = nextTime;
-      for (var k = 0; k < it.notes.length; k++) pluck(it.notes[k], nextTime);
-      if (it.click && $("metro").checked) click(nextTime, it.click === 2);
-      if (it.vis >= 0) vq.push({ i: pos, t: nextTime });
+      var spb = 60 / +bpmEl.value, it = items[pos], t0 = nextTime, ns = it.notes, k, live = 0;
+      var b1 = pos + 1 < lim ? items[pos + 1].beat : endBeat, gap = (b1 - it.beat) * spb;
+      if (strumOn) for (k = 0; k < ns.length; k++) if (!ns[k].tied) live++;
+      if (live >= 3) {
+        // a strummed chord: lowest string first, each string a moment after the one before, done well before the next note
+        var roll = Math.min(0.02, gap * 0.3 / (live - 1)), j = 0;
+        ns.slice().sort(function (a, b) { return b.line - a.line; }).forEach(function (n) { pluck(n, t0 + (n.tied ? 0 : j++ * roll)); });
+      } else for (k = 0; k < ns.length; k++) pluck(ns[k], t0);
+      if (it.click && $("metro").checked) click(t0, it.click === 2);
+      if (it.vis >= 0) vq.push({ i: pos, t: t0 });
       pos++;
-      var b1 = pos < items.length ? items[pos].beat : total;
-      nextTime += (b1 - it.beat) * spb;
+      nextTime += gap;
       segs.push({ t0: t0, t1: nextTime, b0: it.beat, b1: b1 });   // from t0 to t1 the music moves from beat b0 to b1
     }
   }
@@ -1880,7 +2412,13 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var lat = Math.min(0.4, ctx.outputLatency || 0);
     while (vq.length && vq[0].t + lat <= ctx.currentTime) {
       var e = vq.shift();
-      if (e.i < 0) { if (!reduced()) glide(e.t); playing = false; pos = 0; shownItem = -1; playBtn.textContent = "Play"; keepAwake(); if (hooks.pause) hooks.pause(true); return; }
+      if (e.i < 0) {
+        if (!reduced()) glide(e.t);
+        playing = false; playBtn.textContent = "Play";
+        if (preview) { var back = range ? range.i0 : 0; preview = null; computeRange(); pos = firstVisFrom(back); show(pos, false); }   // the one bar is over: back onto its first note
+        else { pos = 0; shownItem = -1; }
+        keepAwake(); paintStrip(); if (fx) paintFix(); if (hooks.pause) hooks.pause(true); return;
+      }
       show(e.i, true);
     }
     if (!reduced()) glide(ctx.currentTime - lat);   // with "reduce motion" on, the bar steps from note to note instead
@@ -1899,7 +2437,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     if (!items.length || starting) return;
     ensureAudio();
     if (!soundReady()) {   // first time with this tab: get its notes ready, then start
-      var tok = ++playTok; starting = true; playBtn.textContent = "Loading sound\u2026"; keepAwake();
+      var tok = ++playTok; starting = true; playBtn.textContent = "Loading\u2026"; keepAwake();
       warmSound().then(function () {
         starting = false; playBtn.textContent = "Play"; keepAwake();
         if (sampleFail && !failTold) { failTold = true; toast("This browser couldn't load the guitar recordings, so the built-in sound is playing instead."); }
@@ -1912,13 +2450,19 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   function startPlaying() {
     if (!items.length || playing) return;
     if (pos >= items.length) pos = 0;
-    var first = pos; while (first < items.length - 1 && items[first].vis < 0) first++;
+    if (range && (pos < range.i0 || pos >= range.i1)) pos = range.i0;   // a looped section plays from its own first bar
+    if (trainer.on && !preview) {
+      trainerFields();
+      // a new run starts from the slow tempo; after a pause it carries on at the tempo it had reached
+      if (!trainer.pass) { bpmEl.value = trainer.start; showTempo(); trainer.pass = 1; }
+    }
+    var first = firstVisFrom(pos);
     revealIfHidden(first);                   // on a small screen the music may still be below the controls
     playing = true; playBtn.textContent = "Pause"; vq = []; segs = [];
-    keepAwake();
+    keepAwake(); paintStrip();
     if (hooks.play) hooks.play();
     var t = ctx.currentTime + 0.08;
-    if ($("countin").checked) { var beat = 60 / +bpmEl.value, n = countInBeats(); for (var i = 0; i < n; i++) click(t + i * beat, i === 0); t += n * beat; }
+    if ($("countin").checked && !preview) { var beat = 60 / +bpmEl.value, n = countInBeats(); for (var i = 0; i < n; i++) click(t + i * beat, i === 0); t += n * beat; }
     nextTime = t;
     timer = setInterval(tick, 25); tick(); requestAnimationFrame(frame);
   }
@@ -1928,8 +2472,9 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     playing = false; playBtn.textContent = "Play";
     clearInterval(timer); timer = null; vq = []; segs = [];
     if (ctx) Object.keys(voices).forEach(function (k) { damp(k, ctx.currentTime); });
+    if (preview) { preview = null; computeRange(); }
     if (shownItem >= 0) { pos = shownItem; show(shownItem, false); }   // the bar goes back onto the note that Play will start from
-    keepAwake();
+    keepAwake(); paintStrip(); if (fx) paintFix();
     if (hooks.pause) hooks.pause(false);
   }
   // tempo: the slider is in BPM; when the page states a tempo, it is also shown as a percentage of that
@@ -1938,12 +2483,11 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     $("bpmv").textContent = v + " BPM" + (writtenTempo ? " \u00b7 " + Math.round(v / writtenTempo * 100) + "%" : "");
     $("pctbtns").hidden = !writtenTempo;
   }
-  function setTempo(v) { bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, Math.round(v * 2) / 2)); showTempo(); if (hooks.changed) hooks.changed(); }
+  function setTempo(v) { bpmEl.value = Math.max(+bpmEl.min, Math.min(+bpmEl.max, Math.round(v * 2) / 2)); trainer.base = +bpmEl.value; showTempo(); if (hooks.changed) hooks.changed(); }
   function barBeats() {
     if (mode === "pdf") return barList.map(function (b) { return b.beat; });
-    var div = +divEl.value, out = [];
-    steps.forEach(function (st, i) { if (st.sinceBar === 0) out.push(i / div); });
-    return out;
+    var div = +divEl.value;
+    return textBars.map(function (tb) { return tb.s0 / div; });
   }
   // dir 1: next bar. dir -1: start of this bar, or the bar before if already there
   function jumpBar(dir) {
@@ -1956,7 +2500,13 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     for (i = 0; i < items.length; i++) if (items[i].vis >= 0 && items[i].beat >= target - 1e-6) { seek(i); revealIfHidden(); return; }
   }
   function firstVis() { for (var i = 0; i < items.length; i++) if (items[i].vis >= 0) return i; return 0; }
-  function toStart() { pause(); pos = 0; if (items.length) show(firstVis(), false); window.scrollTo({ top: 0 }); }
+  // back to the start of the tab, or of the section that is being looped
+  function toStart() {
+    pause(); trainer.pass = 0; paintStrip();
+    pos = range ? range.i0 : 0;
+    if (items.length) show(range ? firstVisFrom(pos) : firstVis(), false);
+    if (range) revealIfHidden(); else window.scrollTo({ top: 0 });
+  }
   function seek(idx) {
     pos = idx; show(idx, false);
     if (playing) {
@@ -1969,7 +2519,13 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var v = shownItem >= 0 && items[shownItem] ? items[shownItem].vis : -1;
     pause(); buildSchedule(); pos = v >= 0 ? itemOfVis(v) : 0; shownItem = v >= 0 ? pos : -1;
   }
-  function reset() { pause(); pos = 0; shownItem = -1; lit = []; vq = []; }
+  // a different tab is coming in: nothing chosen for the old one carries over
+  function reset() {
+    pause(); pos = 0; shownItem = -1; lit = []; vq = [];
+    if (fx) { fx = null; $("fixsheet").hidden = true; sheetRoom(); }
+    section = null; preview = null; picking = null; range = null; secSet = {}; fixes = {}; fixMeta = {}; report = []; barBoxes = [];
+    trainer.target = 0; trainer.base = 0; setTrainer(false, true);
+  }
 
   /* ----- loading ----- */
   function loadText(text, name) {
@@ -2034,6 +2590,23 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     }
     return out.join("\n");
   }
+  // reads a PDF without showing it, to say how well it reads: { bars, unsure } for a printed score, { unreadable } when
+  // nothing could be read, null for a text tab (its timing is spelled out) or anything that goes wrong
+  async function inspectFile(file) {
+    try {
+      if (!window.pdfjsLib) return null;
+      var doc = await pdfjsLib.getDocument({ data: await file.arrayBuffer(), disableFontFace: true }).promise, pages = [], out = null;
+      if (parseTab(await pdfToText(doc)).length) out = null;
+      else {
+        for (var p = 1; p <= doc.numPages; p++) pages.push(await getPageData(await doc.getPage(p), pdfjsLib.OPS));
+        var res = extractEngraved(pages);
+        if (!res) out = { unreadable: true };
+        else { var rep = barReport(res, 0, null); out = { bars: rep.length, unsure: rep.filter(function (r) { return r.unsure; }).length }; }
+      }
+      try { doc.destroy(); } catch (e) {}
+      return out;
+    } catch (err) { return null; }
+  }
   async function handleFile(file, shown) {
     if (!file) return false;
     var label = shown || file.name;
@@ -2066,7 +2639,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   $("stop").addEventListener("click", toStart);
   var changed = function () { if (hooks.changed) hooks.changed(); };
   bpmEl.addEventListener("input", showTempo);
-  bpmEl.addEventListener("change", changed);
+  bpmEl.addEventListener("change", function () { trainer.base = +bpmEl.value; changed(); });
   divEl.addEventListener("change", function () { reschedule(); changed(); });
   beatsEl.addEventListener("change", function () { reschedule(); changed(); });
   $("reps").addEventListener("change", function () { reschedule(); changed(); });
@@ -2075,9 +2648,36 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   $("nextbar").addEventListener("click", function () { jumpBar(1); });
   $("bpmdown").addEventListener("click", function () { setTempo(Math.ceil(+bpmEl.value) - 1); });
   $("bpmup").addEventListener("click", function () { setTempo(Math.floor(+bpmEl.value) + 1); });
-  $("optbtn").addEventListener("click", function () {
-    var open = !deckEl.classList.contains("open");
-    deckEl.classList.toggle("open", open); $("optbtn").setAttribute("aria-expanded", String(open)); fitDeck();
+  $("optbtn").addEventListener("click", function () { setOpts(!deckEl.classList.contains("open")); });
+  // loop a section: tap its first and last bar
+  $("secbtn").addEventListener("click", function () {
+    if (picking === "sec1" || picking === "sec2") { picking = null; computeRange(); paintBars(); return; }
+    if (picking === "fix") endFixMode();
+    if (!items.length) return;
+    picking = "sec1"; setOpts(false); paintBars();
+  });
+  $("secclear").addEventListener("click", clearSection);
+  $("modedone").addEventListener("click", function () { if (picking === "fix") endFixMode(); else { picking = null; computeRange(); paintBars(); } });
+  $("trainer").addEventListener("change", function () { setTrainer($("trainer").checked); });
+  ["tr-start", "tr-step", "tr-target"].forEach(function (id) { $(id).addEventListener("change", function () { trainerFields(); trainer.pass = 0; paintStrip(); changed(); }); });
+  // check rhythm: the unsure bars light up, and tapping any bar opens its editor
+  $("fixbtn").addEventListener("click", function () { if (picking === "fix") endFixMode(); else { if (picking) { picking = null; computeRange(); } startFixMode(-1); } });
+  $("fx-close").addEventListener("click", function () { closeFix(true); });
+  $("fx-prev").addEventListener("click", function () { if (fx.sel > 0) { fx.sel--; paintFix(); fixFocus(false); } });
+  $("fx-next").addEventListener("click", function () { if (fx.sel < fx.at.length - 1) { fx.sel++; paintFix(); fixFocus(false); } });
+  $("fx-earlier").addEventListener("click", function () { var t = nudgeTo(-1); if (t !== null) { fx.at[fx.sel] = t; fixDraft(); } });
+  $("fx-later").addEventListener("click", function () { var t = nudgeTo(1); if (t !== null) { fx.at[fx.sel] = t; fixDraft(); } });
+  $("fx-grid").addEventListener("change", paintFix);
+  $("fx-bminus").addEventListener("click", function () { fx.beats -= 12; fixDraft(); });
+  $("fx-bplus").addEventListener("click", function () { fx.beats += 12; fixDraft(); });
+  $("fx-even").addEventListener("click", function () { var n = fx.at.length; fx.at = fx.at.map(function (v, i) { return Math.round(i * fx.beats / n); }); fixDraft(); });
+  $("fx-hear").addEventListener("click", hearBar);
+  $("fx-save").addEventListener("click", saveFix);
+  $("fx-reset").addEventListener("click", resetFix);
+  $("fx-nextunsure").addEventListener("click", function () {
+    var todo = report.filter(function (r) { return r.unsure && !r.fixed && r.mi !== fx.mi; }), cur = fx.mi;
+    var nx = todo.filter(function (r) { return r.mi > cur; })[0] || todo[0];
+    if (nx) openFix(nx.mi);
   });
   // two fingers on a printed page: spread them to make the page bigger, pinch to make it smaller
   var pinch = null, spread = function (e) { var a = e.touches[0], b = e.touches[1]; return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1; };
@@ -2092,7 +2692,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   tabEl.addEventListener("touchcancel", function () { pinch = null; });
   $("zoomout").addEventListener("click", function () { stepZoom(-1); });
   $("zoomin").addEventListener("click", function () { stepZoom(1); });
-  $("showboard").addEventListener("change", function () { prefs[boardKey()] = $("showboard").checked; savePrefs(); relayout(); });
+  $("boardbtn").addEventListener("click", function () { prefs[boardKey()] = deckEl.classList.contains("noboard"); savePrefs(); relayout(); });
   var resizeTimer = null;
   window.addEventListener("resize", function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(relayout, 150); });
   // leaving the app (or the tab) pauses: a phone stops the clock that schedules the notes while it is in the background
@@ -2103,8 +2703,10 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   if (prefs.volm >= 0) $("volm").value = prefs.volm;
   if (prefs.room >= 0) $("room").value = prefs.room;
   if (prefs.sound === "nylon" || prefs.sound === "synth") $("sound").value = prefs.sound;
+  var strumOn = $("strum").checked = prefs.strum === true;
+  $("strum").addEventListener("change", function () { strumOn = $("strum").checked; savePrefs(); });
   function savePrefs() {
-    prefs.volg = +$("volg").value; prefs.volm = +$("volm").value; prefs.room = +$("room").value; prefs.sound = $("sound").value;
+    prefs.volg = +$("volg").value; prefs.volm = +$("volm").value; prefs.room = +$("room").value; prefs.sound = $("sound").value; prefs.strum = $("strum").checked;
     try { localStorage.setItem("tabplayer-sound", JSON.stringify(prefs)); } catch (e) {}
   }
   $("room").addEventListener("input", function () { applyVolumes(); savePrefs(); });
@@ -2129,6 +2731,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   document.addEventListener("keydown", function (e) {
     var tag = e.target.tagName, flip = function (id) { var c = $(id); c.checked = !c.checked; c.dispatchEvent(new Event("change")); };
     if ($("view-player").hidden || e.ctrlKey || e.metaKey || e.altKey || tag === "TEXTAREA" || tag === "SELECT" || (tag === "INPUT" && e.target.type !== "checkbox")) return;
+    if (e.key === "Escape" && (fx || picking)) { if (fx) closeFix(true); else if (picking === "fix") endFixMode(); else { picking = null; computeRange(); paintBars(); } return; }
     if (e.code === "Space") { if (tag === "INPUT" || tag === "BUTTON" || tag === "SUMMARY") return; e.preventDefault(); playing ? pause() : play(); return; }
     switch (e.key) {
       case "ArrowRight": jumpBar(1); break;
@@ -2139,6 +2742,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       case "l": case "L": flip("loop"); break;
       case "m": case "M": flip("metro"); break;
       case "g": case "G": flip("muteg"); break;
+      case "f": case "F": $("boardbtn").click(); break;
       default: return;
     }
     e.preventDefault();
@@ -2306,6 +2910,8 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   var tabsData = [], stateBy = {}, editingId = null, tagFilter = null, purgeAsk = null, removeAsk = null, openSeq = 0, blobs = new Map();
   var currentTab = null, applying = false, saveTimer = null, toastTimer = null, pract = { since: 0, acc: 0, timer: null };
   var listEl = $("tablist"), libMsg = $("libmsg"), topEl = document.querySelector(".top"), deep = false;
+  var folderEdit = null, closedFolders = {};
+  try { closedFolders = JSON.parse(localStorage.getItem("tabplayer-folders-closed") || "{}") || {}; } catch (e) {}
 
   /* small helpers */
   function pad2(n) { return (n < 10 ? "0" : "") + n; }
@@ -2377,7 +2983,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     if (name === "lib") renderLibrary();
     else if (name === "trash") renderTrash();
     else if (name === "practice") loadPractice();
-    else if (name === "members") loadMembers();
+    else if (name === "members") { loadActivity(); loadMembers(); }
     else if (name === "tuner") tunerOpen();
     else if (name === "player") relayout();
   }
@@ -2415,7 +3021,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       $("nav-practice").hidden = $("nav-members").hidden = !isMember;
       if (!isMember) { tabsData = []; renderLibrary(); setLib("You're signed in, but this account isn't on the library's member list. The library's owner can approve it from the Members screen."); return; }
       var res = await Promise.all([
-        sb.from("tabs").select("id,name,artist,tags,path,size_bytes,uploaded_by_email,created_at,deleted_at,deleted_by_email"),
+        sb.from("tabs").select("*"),
         sb.from("tab_state").select("tab_id,favorite,settings,position_beat,seconds_practiced,last_played_at")
       ]);
       if (res[0].error) throw res[0].error;
@@ -2464,28 +3070,33 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       return byName(a, b);
     });
     listEl.textContent = "";
+    var names = folderNames(), dl = $("folderlist");
+    dl.textContent = ""; names.forEach(function (n) { var o = el("option"); o.value = n; dl.appendChild(o); });
     if (!rows.length && isMember && !libMsg.textContent) {
       var e = el("li", "empty");
       e.textContent = !all.length ? "No tabs saved yet. Add a PDF and it shows up here for everyone on the member list." : fav && !q && !tagFilter ? "No favorites yet. Use the star next to a tab to mark it." : "No tabs match.";
       listEl.appendChild(e); return;
     }
-    rows.forEach(function (t) {
+    var makeRow = function (t, inFolder) {
       var li = el("li", "tabrow"), main = el("div", "tabmain"), acts = el("div", "tabacts"), s = st(t);
       if (editingId !== t.id) li.className = "tabrow lib";
+      if (inFolder) li.classList.add("infolder");
       if (editingId === t.id) {
         var f = el("form", "editform"), mk = function (label, value, max, ph) {
           var l = el("label"), i = el("input"); l.textContent = label; i.type = "text"; i.value = value; i.maxLength = max; i.placeholder = ph || ""; i.id = "edit-" + label.toLowerCase() + "-" + t.id; l.htmlFor = i.id;
           f.appendChild(l); f.appendChild(i); return i;
         };
         var iName = mk("Name", t.name, 200), iArtist = mk("Artist", t.artist || "", 200), iTags = mk("Tags", (t.tags || []).join(", "), 300, "fingerstyle, easy, to learn");
+        var iFolder = mk("Folder", t.folder || "", 60, names.length ? "none (pick one or type a new name)" : "none (type a name to make one)");
+        iFolder.setAttribute("list", "folderlist"); iFolder.autocomplete = "off";
         var bar = el("div", "tabacts"), save = el("button", "primary"); save.type = "submit"; save.textContent = "Save";
         bar.appendChild(save); bar.appendChild(btn("Cancel", "", function () { editingId = null; renderList(); }));
         f.appendChild(bar);
-        f.addEventListener("submit", function (ev) { ev.preventDefault(); saveEdit(t, iName.value, iArtist.value, iTags.value); });
+        f.addEventListener("submit", function (ev) { ev.preventDefault(); saveEdit(t, iName.value, iArtist.value, iTags.value, iFolder.value); });
         f.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { editingId = null; renderList(); } });
-        li.appendChild(f); listEl.appendChild(li);
+        li.appendChild(f);
         setTimeout(function () { iName.focus(); iName.select(); }, 0);
-        return;
+        return li;
       }
       var star = btn(s.favorite ? "★" : "☆", "star" + (s.favorite ? " on" : ""), function () { toggleFav(t); });
       star.setAttribute("aria-pressed", s.favorite ? "true" : "false"); star.setAttribute("aria-label", "Favorite"); star.title = s.favorite ? "Remove from favorites" : "Add to favorites";
@@ -2504,8 +3115,55 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       meta.textContent = bits.join(" · "); main.appendChild(meta);
       acts.appendChild(btn("Edit", "", function () { editingId = t.id; renderList(); }));
       acts.appendChild(btn("Delete", "", function () { trashTab(t); }));
-      li.appendChild(star); li.appendChild(main); li.appendChild(acts); listEl.appendChild(li);
+      li.appendChild(star); li.appendChild(main); li.appendChild(acts);
+      return li;
+    };
+    // folders first, each one a heading that opens and closes; tabs that are in no folder come after them
+    var filtering = !!q || !!tagFilter || fav, loose = rows.filter(function (t) { return !folderOf(t); });
+    names.forEach(function (name) {
+      var mine = rows.filter(function (t) { return folderOf(t).toLowerCase() === name.toLowerCase(); }), key = name.toLowerCase();
+      if (!mine.length && filtering) return;
+      var open = filtering || !closedFolders[key], li = el("li", "folderrow");
+      if (folderEdit === key) {
+        var f = el("form", "folderform"), inp = el("input"), save = el("button", "primary");
+        inp.type = "text"; inp.value = name; inp.maxLength = 60; inp.setAttribute("aria-label", "Folder name"); save.type = "submit"; save.textContent = "Save";
+        f.appendChild(inp); f.appendChild(save);
+        f.appendChild(btn("Remove folder", "", function () { renameFolder(name, ""); }));
+        f.appendChild(btn("Cancel", "", function () { folderEdit = null; renderList(); }));
+        f.addEventListener("submit", function (ev) { ev.preventDefault(); renameFolder(name, inp.value); });
+        f.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { folderEdit = null; renderList(); } });
+        li.appendChild(f); listEl.appendChild(li);
+        setTimeout(function () { inp.focus(); inp.select(); }, 0);
+      } else {
+        var tg = btn("", "foldertoggle", function () { if (closedFolders[key]) delete closedFolders[key]; else closedFolders[key] = 1; try { localStorage.setItem("tabplayer-folders-closed", JSON.stringify(closedFolders)); } catch (e) {} renderList(); });
+        var car = el("span", "caret"), nm = el("span", "fname"), ct = el("span", "count");
+        car.textContent = open ? "\u25be" : "\u25b8"; car.setAttribute("aria-hidden", "true"); nm.textContent = name; ct.textContent = mine.length + (mine.length === 1 ? " tab" : " tabs");
+        tg.appendChild(car); tg.appendChild(nm); tg.appendChild(ct); tg.setAttribute("aria-expanded", String(open));
+        li.appendChild(tg); li.appendChild(btn("Rename", "small", function () { folderEdit = key; renderList(); }));
+        listEl.appendChild(li);
+      }
+      if (open) mine.forEach(function (t) { listEl.appendChild(makeRow(t, true)); });
     });
+    if (names.length && loose.length) { var lh = el("li", "folderrow plain"); lh.textContent = "Not in a folder"; listEl.appendChild(lh); }
+    loose.forEach(function (t) { listEl.appendChild(makeRow(t, false)); });
+  }
+  function folderOf(t) { return (t.folder || "").trim(); }
+  // the folders in use, each spelled the way it was first typed
+  function folderNames() {
+    var seen = {}, out = [];
+    active().forEach(function (t) { var f = folderOf(t); if (f && !seen[f.toLowerCase()]) { seen[f.toLowerCase()] = 1; out.push(f); } });
+    return out.sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }); });
+  }
+  // rename a folder for everyone, or (empty name) take its tabs out of it
+  async function renameFolder(oldName, newName) {
+    newName = newName.replace(/\s+/g, " ").trim().slice(0, 60);
+    if (newName === oldName) { folderEdit = null; renderList(); return; }
+    var same = folderNames().filter(function (n) { return n.toLowerCase() === newName.toLowerCase() && n.toLowerCase() !== oldName.toLowerCase(); })[0];
+    if (same) newName = same;   // renaming onto an existing folder merges the two
+    var r = await sb.from("tabs").update({ folder: newName || null }).eq("folder", oldName).select();
+    if (r.error) { setLib("Couldn't change the folder. " + explain(r.error), true); return; }
+    tabsData.forEach(function (t) { if (folderOf(t) === oldName) t.folder = newName || null; });
+    folderEdit = null; setLib(""); renderLibrary();
   }
   function renderFoot() {
     var total = 0, tr = trashed().length;
@@ -2536,9 +3194,30 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       var txt = /\.txt$/i.test(t.path);
       var ok = await handleFile(new File([blob], t.name + (txt ? ".txt" : ".pdf"), { type: txt ? "text/plain" : "application/pdf" }), t.name);
       if (seq !== openSeq || !ok) return;
-      currentTab = t; applySaved(t);
+      currentTab = t;
+      if (mode === "pdf") await loadFixes(t, seq);
+      if (seq !== openSeq || currentTab !== t) return;
+      applySaved(t);
     } catch (err) { if (seq === openSeq) setStatus("Couldn't open " + t.name + ". " + explain(err), true); }
   }
+  // corrections to the rhythm of this tab's bars, shared by everyone
+  async function loadFixes(t, seq) {
+    var r = await sb.from("tab_fixes").select("bar,fix,updated_by_email").eq("tab_id", t.id);
+    if (seq !== openSeq || currentTab !== t || r.error || !r.data.length) return;   // (an older database has no corrections table: carry on without)
+    var map = {}, meta = {}, me = session && session.user.email;
+    r.data.forEach(function (x) { map[x.bar] = x.fix; meta[x.bar] = { by: x.updated_by_email === me ? "you" : (x.updated_by_email || "").split("@")[0] }; });
+    setFixes(map, meta);
+  }
+  hooks.saveFix = function (mi, fix) {
+    var t = currentTab; if (!t || !sb || !isMember) return null;
+    return sb.from("tab_fixes").upsert({ tab_id: t.id, bar: mi, fix: fix }, { onConflict: "tab_id,bar" })
+      .then(function (r) { return r.error ? explain(r.error) : ""; }, function (e) { return explain(e); });
+  };
+  hooks.dropFix = function (mi) {
+    var t = currentTab; if (!t || !sb || !isMember) return Promise.resolve("");
+    return sb.from("tab_fixes").delete().eq("tab_id", t.id).eq("bar", mi)
+      .then(function (r) { return r.error ? explain(r.error) : ""; }, function (e) { return explain(e); });
+  };
   // your own tempo and options for this tab, and the bar you stopped in
   function applySaved(t) {
     var s = st(t), set = s.settings || {}, has = function (sel, v) { return Array.prototype.some.call(sel.options, function (o) { return o.value === String(v); }); };
@@ -2549,6 +3228,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       if (has(beatsEl, set.beats)) beatsEl.value = String(set.beats);
     } else if (has(divEl, set.div)) divEl.value = String(set.div);
     reschedule();
+    applyPractice(set);                        // the section you were looping and the speed trainer
     applying = false;
     var p = s.position_beat || 0, start = 0, i;
     if (p > 1 && p < total - 2) {
@@ -2561,7 +3241,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   }
   function saveSettings() {
     var t = currentTab; if (!t || !sb || !isMember) return;
-    var set = { bpm: +bpmEl.value };
+    var ps = practiceState(), set = { bpm: ps.bpm, loop: ps.loop, trainer: ps.trainer };
     if (mode === "pdf") { set.reps = $("reps").checked; set.beats = +beatsEl.value; } else set.div = +divEl.value;
     ownState(t).settings = set;
     sb.from("tab_state").upsert({ user_id: userId, tab_id: t.id, settings: set }, { onConflict: "user_id,tab_id" }).then(function (r) { if (r.error) console.warn("settings not saved: " + r.error.message); });
@@ -2594,7 +3274,7 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
 
   /* adding, editing, favourites */
   async function addFiles(files) {
-    var list = Array.prototype.slice.call(files), added = 0, problems = [];
+    var list = Array.prototype.slice.call(files), added = 0, problems = [], notes = [];
     for (var i = 0; i < list.length; i++) {
       var f = list[i], txt = /\.txt$/i.test(f.name), pdf = /\.pdf$/i.test(f.name) || f.type === "application/pdf", name = cleanName(f.name);
       if (!txt && !pdf) { problems.push(f.name + " isn't a PDF or text file."); continue; }
@@ -2608,19 +3288,31 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
         var ins = await sb.from("tabs").insert({ name: name, path: path, size_bytes: f.size }).select().single();
         if (ins.error) { await sb.storage.from("tabs").remove([path]); throw ins.error; }
         tabsData.push(ins.data); blobs.set(path, f); added++;
+        if (pdf) {
+          setLib("Checking how well " + name + " reads\u2026");
+          var rep = await inspectFile(f);
+          if (rep && rep.unreadable) notes.push(name + " was saved, but no tab could be read from it. It looks like a scanned image, which the player can't read.");
+          else if (rep) notes.push(name + ": " + (rep.unsure ? rep.unsure + " of " + rep.bars + " bars are worth a second look. Open it and choose Review them." : "all " + rep.bars + " bars were read with confidence."));
+        }
       } catch (err) { problems.push(f.name + ": " + explain(err)); }
     }
-    setLib((added ? "Saved " + added + (added === 1 ? " tab. " : " tabs. ") : "") + problems.join(" "), problems.length > 0 && !added);
+    setLib((added ? "Saved " + added + (added === 1 ? " tab. " : " tabs. ") : "") + notes.concat(problems).join(" "), problems.length > 0 && !added);
     renderLibrary();
   }
-  async function saveEdit(t, name, artist, tagText) {
+  async function saveEdit(t, name, artist, tagText, folder) {
     name = name.replace(/\s+/g, " ").trim().slice(0, 200); artist = artist.replace(/\s+/g, " ").trim().slice(0, 200);
+    folder = (folder || "").replace(/\s+/g, " ").trim().slice(0, 60);
+    var known = folderNames().filter(function (n) { return n.toLowerCase() === folder.toLowerCase(); })[0];
+    if (known) folder = known;                 // same folder, however it was capitalised this time
     var seen = {}, tags = [];
     tagText.split(",").forEach(function (g) { g = g.replace(/\s+/g, " ").trim().slice(0, 30); if (g && !seen[g.toLowerCase()] && tags.length < 20) { seen[g.toLowerCase()] = 1; tags.push(g); } });
     if (!name) { setLib("A tab needs a name.", true); return; }
-    var r = await sb.from("tabs").update({ name: name, artist: artist || null, tags: tags }).eq("id", t.id).select().single();
+    var patch = { name: name, artist: artist || null, tags: tags };
+    if (folder !== folderOf(t)) patch.folder = folder || null;
+    var r = await sb.from("tabs").update(patch).eq("id", t.id).select().single();
     if (r.error) { setLib("Couldn't save the changes. " + explain(r.error), true); return; }
-    t.name = r.data.name; t.artist = r.data.artist; t.tags = r.data.tags; editingId = null; setLib("");
+    t.name = r.data.name; t.artist = r.data.artist; t.tags = r.data.tags; t.folder = r.data.folder || null; editingId = null; setLib("");
+    if (t.folder) delete closedFolders[t.folder.toLowerCase()];
     if (currentTab === t) $("nowplaying").textContent = t.name;
     renderLibrary();
   }
@@ -2691,11 +3383,12 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       for (var i = 0; i < list.length; i++) {
         var t = list[i], ext = /\.txt$/i.test(t.path) ? ".txt" : ".pdf";
         setLib("Collecting " + (i + 1) + " of " + list.length + ": " + t.name + "…");
-        var base = t.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Untitled", fn = base + ext, k = 2;
+        var safe = function (x) { return x.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").replace(/^\.+/, "").trim().slice(0, 120); };
+        var dir = safe(folderOf(t)), base = (dir ? dir + "/" : "") + (safe(t.name) || "Untitled"), fn = base + ext, k = 2;
         while (used[fn.toLowerCase()]) fn = base + " (" + (k++) + ")" + ext;
         used[fn.toLowerCase()] = 1;
         zip.file(fn, await getBlob(t, false));
-        index.push({ file: fn, name: t.name, artist: t.artist || "", tags: t.tags || [], added: t.created_at, added_by: t.uploaded_by_email || "" });
+        index.push({ file: fn, name: t.name, artist: t.artist || "", tags: t.tags || [], folder: folderOf(t), added: t.created_at, added_by: t.uploaded_by_email || "" });
       }
       zip.file("library.json", JSON.stringify(index, null, 2));
       setLib("Building the zip…");
@@ -2748,6 +3441,32 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
       m.textContent = "Last played " + relDay(st(t).last_played_at); main.appendChild(m);
       tm.textContent = fmtDur(st(t).seconds_practiced);
       li.appendChild(main); li.appendChild(tm); list.appendChild(li);
+    });
+  }
+
+  /* activity: what each of you added, practised, corrected or deleted lately */
+  function relTime(iso) {
+    var d = new Date(iso); if (isNaN(d)) return "";
+    return daysAgo(iso) <= 0 ? "today, " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : relDay(iso);
+  }
+  async function loadActivity() {
+    var msg = $("actmsg"), list = $("actlist");
+    if (!sb || !isMember) { msg.textContent = ""; list.textContent = ""; return; }
+    msg.className = "muted"; if (!list.children.length) msg.textContent = "Loading\u2026";
+    var r = await sb.rpc("library_activity", { p_limit: 60 });
+    if (r.error) { msg.textContent = explain(r.error); msg.className = "err"; list.textContent = ""; return; }
+    msg.textContent = ""; list.textContent = "";
+    if (!r.data || !r.data.length) { var e = el("li", "empty"); e.textContent = "Nothing yet. New tabs, practice and rhythm corrections will show up here."; list.appendChild(e); return; }
+    r.data.forEach(function (a) {
+      var li = el("li", "act"), text = el("span", "acttext"), when = el("span", "when"), who = a.is_me ? "You" : (a.who || "Someone").split("@")[0];
+      var tab = active().filter(function (t) { return t.id === a.tab_id; })[0], name;
+      var verb = a.kind === "added" ? " added " : a.kind === "trashed" ? " moved " : a.kind === "practised" ? " practised " : " corrected the rhythm in ";
+      var tail = a.kind === "trashed" ? " to the trash" : a.kind === "practised" ? " for " + fmtDur(a.amount) : a.kind === "fixed" ? " (" + a.amount + (a.amount === 1 ? " bar)" : " bars)") : "";
+      text.appendChild(document.createTextNode(who + verb));
+      if (tab) name = btn(a.tab_name, "link", function () { openTab(tab); }); else { name = el("b"); name.textContent = a.tab_name; }
+      text.appendChild(name); text.appendChild(document.createTextNode(tail));
+      when.textContent = relTime(a.at);
+      li.appendChild(text); li.appendChild(when); list.appendChild(li);
     });
   }
 
@@ -2847,7 +3566,12 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
   }
 
   window.__player = { handleFile: handleFile, detectPitch: detectPitch,
-    state: function () { return { mode: mode, items: items.length, total: total, pos: pos, shown: shownItem, playing: playing, rings: rings.length, bpm: +bpmEl.value, tab: currentTab ? currentTab.name : null }; },
+    state: function () { return { mode: mode, items: items.length, total: total, pos: pos, shown: shownItem, playing: playing, rings: rings.length, bpm: +bpmEl.value, tab: currentTab ? currentTab.name : null,
+      section: section, range: range ? [range.i0, range.i1, range.from, range.to] : null, picking: picking, trainer: { on: trainer.on, pass: trainer.pass, start: trainer.start, step: trainer.step, target: trainer.target },
+      beat: items[shownItem] ? items[shownItem].beat : null, fixes: Object.keys(fixes).length, fx: fx ? { mi: fx.mi, beats: fx.beats, at: fx.at.slice(), sel: fx.sel, dirty: fx.dirty } : null,
+      report: { bars: report.length, unsure: report.filter(function (r) { return r.unsure && !r.fixed; }).map(function (r) { return r.mi; }), fixed: report.filter(function (r) { return r.fixed; }).map(function (r) { return r.mi; }) } }; },
+    barTimes: function (mi) { var out = []; pdfEvents.forEach(function (e) { var b = barList[e.bar]; if (b.mi === mi && !e.grace && out.length < 40 && e.bar === barList.indexOf(barList.filter(function (x) { return x.mi === mi; })[0])) out.push(+(e.beat - b.beat).toFixed(4)); }); return out; },
+    plucks: function () { return window.__plucks || []; },
     beats: function (n) { return items.filter(function (i) { return i.vis >= 0; }).slice(0, n).map(function (i) { return +i.beat.toFixed(3); }); },
     countIn: countInBeats,
     // for checking: pitch of a decoded recording and how soon after its start point the pluck begins
