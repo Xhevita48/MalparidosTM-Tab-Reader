@@ -772,7 +772,7 @@ h2.gap { margin-top: 10px; }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<script>window.__BUILD = "2026-11-12 20:02";</script>
+<script>window.__BUILD = "2026-11-13 17:48";</script>
 <script>
 /* Nylon-string guitar, one short recording per note (MIDI note number -> MP3, base64).
    From the FluidR3_GM soundfont, Creative Commons Attribution 3.0, as prepared for the web by the MIDI.js Soundfonts project
@@ -1044,7 +1044,7 @@ function findStaves(pd) {
     if (r && s.p - r.y < 0.7) { r.a = Math.min(r.a, s.a); r.b = Math.max(r.b, s.b); }
     else rows.push({ y: s.p, a: s.a, b: s.b });
   });
-  rows = rows.filter(function (r) { return r.b - r.a > pd.width * 0.25; });
+  rows = rows.filter(function (r) { return r.b - r.a > Math.min(pd.width * 0.25, 90); });   // a last line may hold just one short bar
   var staves = [], i = 0;
   while (i < rows.length - 1) {
     var gap = rows[i + 1].y - rows[i].y, j = i + 1;
@@ -1061,13 +1061,25 @@ function findStaves(pd) {
   return staves;
 }
 
+// note symbols in tempo marks and metric modulations, as quarter notes: Finale's text fonts use q/h/e/w,
+// Maestro's numbers font prints them as \u0152 and \u00d3, SMuFL fonts use their metronome-mark glyphs
+function noteValue(ch) {
+  return { q: 1, "\u0152": 1, "\ueca5": 1, "\u2669": 1, h: 2, "\u00d3": 2, "\ueca3": 2, e: 0.5, "\ueca7": 0.5, w: 4, "\ueca2": 4 }[ch] || 0;
+}
+// "C" and cut-C time signatures, as printed by music fonts (Maestro's export maps them to Greek capitals)
+var C_TIME = { "\u0392": 4, "\u03a7": 4, "\u03c7": 4, "\ue08a": 4, "\ue08b": 4, c: 4, C: 4 };
+var MUSIC_FONT = /maestro|bravura|petaluma|sonata|leland|finale|jazz|engraver|november|emmentaler|feta|gonville|opus/i;
+
 var STD_E = { 4: [43, 38, 33, 28], 5: [43, 38, 33, 28, 23], 6: [64, 59, 55, 50, 45, 40], 7: [64, 59, 55, 50, 45, 40, 35], 8: [64, 59, 55, 50, 45, 40, 35, 30] };
 
 // pages: output of getPageData. Returns null when no engraved tab is found.
 function extractEngraved(pages) {
   var head = pages.length ? textLines(pages[0].texts.filter(function (t) { return t.y < pages[0].height * 0.3; })).join("\n") : "";
   var tm = head.match(/=\s*(\d{2,3})\b/), cm = head.match(/capo\s*(\d{1,2})/i);
-  var info = { tempo: tm ? +tm[1] : null, capo: cm ? +cm[1] : 0, dropD: /drop\s*d\b/i.test(head), tempoWord: null, tempoGuess: null };
+  var info = { tempo: tm ? +tm[1] : null, capo: cm ? +cm[1] : 0, dropD: /drop\s*d\b/i.test(head), tempoWord: null, tempoGuess: null, tempoUnit: 1 };
+  // the note the tempo counts: "q = 78" is quarter notes, "q. = 55" dotted quarters, "h = 60" half notes
+  var tu = head.match(/(?:^|[\s(])([qhew\u0152\u00d3\ueca5\ueca3\ueca7\ueca2\u2669])\s*([.\uecb7])?\s*=\s*\d{2,3}\b/m);
+  if (tu) info.tempoUnit = noteValue(tu[1]) * (tu[2] ? 1.5 : 1);
   if (!info.tempo) {   // no number printed: go by the tempo word, if there is one
     [[/\b(very slow(ly)?|grave|largo|lento|lent)\b/i, 54], [/\b(slow(ly)?|adagio)\b/i, 60], [/\b(andante|walking)\b/i, 76], [/\b(moderato|moderate(ly)?)\b/i, 100],
      [/\b(allegretto)\b/i, 110], [/\b(allegro|fast|lively)\b/i, 126], [/\b(vivace|presto|very fast)\b/i, 160]].some(function (w) {
@@ -1127,6 +1139,12 @@ function extractEngraved(pages) {
             if (ok(den) && num >= 1 && num <= 16) { sigs.push({ x: lo.x, beats: num * 4 / den }); used.push(lo, up); }
           });
         });
+        var mid = (above.top + above.bottom) / 2;
+        pd.texts.forEach(function (t) {
+          if (t.s.length !== 1 || !C_TIME[t.s] || Math.abs(t.y - mid) > above.sp * 0.7 || t.x < above.x0 || t.x > above.x1) return;
+          if (/^[cC]$/.test(t.s) && !MUSIC_FONT.test((t.face || "") + " " + t.font)) return;
+          sigs.push({ x: t.x, beats: C_TIME[t.s] });
+        });
       }
       // marks printed around the staves: "1." / "2." ending labels and tuplet numbers
       var zoneTop = (above ? above.top : st.top) - 46, voltas = [], tuplets = [];
@@ -1134,6 +1152,8 @@ function extractEngraved(pages) {
         if (used.indexOf(t) >= 0 || t.x < st.x0 + 4 || t.x > st.x1 || t.y < zoneTop || t.y > st.top - 2 || t.s.length !== 1) return;
         if (staves.some(function (o) { return o.tab && o !== st && t.y > o.top - o.sp && t.y < o.bottom + o.sp * 1.2; })) return;   // a fret number on the line above
         var dot = pd.texts.some(function (o) { return o.s === "." && Math.abs(o.y - t.y) < 1.5 && o.x > t.x && o.x - (t.x + t.w) < t.w * 0.6; });
+        // a digit at the end of a word ("Capo 3", "Play 3x") is not a tuplet or ending number
+        if (pd.texts.some(function (o) { return o !== t && /[A-Za-z]/.test(o.s) && Math.abs(o.y - t.y) < 1.5 && ((o.x < t.x && t.x - (o.x + o.w) < t.w * 1.2) || (o.x > t.x && o.x - (t.x + t.w) < t.w * 0.6)); })) return;
         if (dot && (t.s === "1" || t.s === "2") && t.y < (above ? above.top : st.top) + 2) voltas.push({ x: t.x, n: +t.s });
         else if (!dot) {
           var fk = (t.face || t.font) + "|" + Math.round(t.h);
@@ -1173,6 +1193,8 @@ function extractEngraved(pages) {
           var c = cols[cols.length - 1];
           if (c && nt.cx - c.cx < 2.5) c.notes.push(nt); else cols.push({ cx: nt.cx, x: nt.cx - dw / 2, notes: [nt] });
         });
+        // the clef, key and time at the start of a line, closed off by a start-repeat barline, is not a bar
+        if (!cols.length && !measures.length && m === 0 && (bars[1].startRep || xb - xa < 64)) continue;
         if (xb - xa < 30 && !cols.length) { if (measures.length) { var pm = measures[measures.length - 1]; pm.endRep = pm.endRep || bars[m + 1].endRep; } continue; }
         var mm = { xa: xa, xb: xb, cols: cols, sig: sig, firstInSys: !measures.length, startRep: !!bars[m].startRep, endRep: !!bars[m + 1].endRep, volta: 0,
           tuplets: tuplets.filter(function (u) { return u.x >= xa && u.x < xb; }) };
@@ -1208,8 +1230,78 @@ function extractEngraved(pages) {
   // a typeface that also prints 1s, 2s and 4s beside the notes is fingering, so its 3s are not triplet marks
   systems.forEach(function (s) { s.measures.forEach(function (m) { m.tuplets = m.tuplets.filter(function (u) { return (otherDigits[u.key] || 0) < 3; }); }); });
   var eng = { systems: systems, info: info, tuning: tuning, nStr: nStr, count: count, lead: lead, lead1: lead1 };
+  readMarks(pages, eng);
   buildSlots(pages, eng);
   return eng;
+}
+
+/* ---------- Road map marks ----------
+   Segno and coda signs, "D.S. al Coda", "D.C. al Fine", "To Coda", "Fine", "Play 3x" and metric modulations such as
+   "(q. = h)". Each belongs to the bar it is printed over. */
+function readMarks(pages, eng) {
+  var all = [];
+  eng.systems.forEach(function (s, si) { s.measures.forEach(function (m) { all.push(m); }); });
+  // the line of music a mark belongs to: the nearest one below it on the page
+  var sysAt = function (pi, y) {
+    var best = null;
+    eng.systems.forEach(function (s) { if (s.page === pi && y < s.top && y > s.sysTop - 48 && (!best || s.top < best.top)) best = s; });
+    return best;
+  };
+  var barAt = function (s, x) {
+    var hit = null;
+    s.measures.forEach(function (m) { if (x >= m.xa - 8 && (!hit || m.xa - 8 <= x)) hit = m; });
+    return hit;
+  };
+  pages.forEach(function (pd, pi) {
+    // words: neighbouring letters of one size on one line
+    var ts = pd.texts.slice().sort(function (a, b) { return a.y - b.y || a.x - b.x; }), words = [];
+    ts.forEach(function (t) {
+      var w = words[words.length - 1];
+      if (w && Math.abs(w.y - t.y) < 1.5 && Math.abs(w.h - t.h) < 2.5 && t.x - w.x1 < t.h * 0.7 && t.x > w.x0 - 1) { w.s += (t.x - w.x1 > t.h * 0.18 ? " " : "") + t.s; w.x1 = Math.max(w.x1, t.x + t.w); w.items.push(t); }
+      else words.push({ y: t.y, h: t.h, x0: t.x, x1: t.x + t.w, s: t.s, items: [t] });
+    });
+    var toCodaWords = [];
+    words.forEach(function (w) {
+      var s = sysAt(pi, w.y); if (!s) return;
+      var txt = w.s.replace(/\s+/g, " ").trim(), low = txt.toLowerCase().replace(/\s+/g, ""), m = barAt(s, (w.x0 + w.x1) / 2);
+      if (!m) return;
+      var jm;
+      if ((jm = low.match(/^(d\.?s\.?|dalsegno|d\.?c\.?|dacapo)(al(coda|fine))?\.?$/))) {
+        m.jump = { from: /^d\.?c|^dacapo/.test(jm[1]) ? "start" : "segno", until: jm[3] || "end" };
+      }
+      else if (/^to(the)?coda/.test(low)) { m.toCoda = true; toCodaWords.push(w); }
+      else if (low === "coda") m.codaHead = true;
+      else if (low === "fine") m.fine = true;
+      else if ((jm = low.match(/^(?:play)?(\d)(?:x|times)$|^(?:play)?x(\d)$/))) m.passes = +(jm[1] || jm[2]);
+      // a metric modulation: two note values either side of "="
+      var eq = w.items.findIndex ? w.items.findIndex(function (t) { return t.s === "="; }) : -1;
+      if (eq > 0 && eq < w.items.length - 1) {
+        var side = function (list) {
+          var v = 0, dot = false;
+          list.forEach(function (t) { var n = noteValue(t.s); if (n) v = n; else if (t.s === "." || t.s === "\uecb7") dot = !!v; });
+          return v * (dot ? 1.5 : 1);
+        };
+        var a = side(w.items.slice(0, eq)), b = side(w.items.slice(eq + 1));
+        if (a && b && !/\d/.test(w.items.slice(eq + 1).map(function (t) { return t.s; }).join(""))) m.modulate = b / a;
+      }
+      // the little notes in a tempo mark or modulation are not rests or notes of the music
+      if (eq >= 0) w.items.forEach(function (t) { t.mark = true; });
+    });
+    // segno and coda signs
+    pd.texts.forEach(function (t) {
+      if (t.s.length !== 1) return;
+      var isSegno = /[\u2203\ue047\ud834]/.test(t.s) || (t.s === "%" && MUSIC_FONT.test((t.face || "") + t.font));
+      var isCoda = /[\uf0de\ue048\u2295]/.test(t.s);
+      if (!isSegno && !isCoda) return;
+      var s = sysAt(pi, t.y); if (!s) return;
+      var m = barAt(s, t.x + t.w / 2); if (!m) return;
+      if (isSegno) m.segno = true;
+      else if (!toCodaWords.some(function (w) { return Math.abs(w.y - t.y) < 12 && t.x > w.x0 - 40 && t.x < w.x1 + 40; })) m.codaHead = true;
+    });
+  });
+  // the length of a beat: what the tempo counts (a dotted quarter in 6/8), changed by any metric modulation
+  var unit = eng.info.tempoUnit || 1;
+  all.forEach(function (m) { m.unitIn = unit; if (m.modulate) unit *= m.modulate; m.unit = unit; });
 }
 
 /* ---------- Reading the notation staff ----------
@@ -1225,7 +1317,7 @@ function buildSlots(pages, eng) {
   eng.systems.forEach(function (sys) {
     var pd = pages[sys.page], xs = [];
     sys.measures.forEach(function (m) { m.cols.forEach(function (c) { xs.push(c.x); }); });
-    sys.glyphs = !sys.nsp ? [] : pd.texts.filter(function (t) { return t.s.length === 1 && !/\d/.test(t.s) && t.y > sys.sysTop - 12 && t.y < sys.top - 3 && t.x > sys.x0 && t.x < sys.x1; });
+    sys.glyphs = !sys.nsp ? [] : pd.texts.filter(function (t) { return t.s.length === 1 && !t.mark && !/\d/.test(t.s) && t.y > sys.sysTop - 12 && t.y < sys.top - 3 && t.x > sys.x0 && t.x < sys.x1; });
     sys.glyphs.forEach(function (t) {
       var o = stat[key(t)] = stat[key(t)] || { n: 0, al: 0, w: t.w, h: t.h };
       o.n++; if (xs.some(function (x) { return Math.abs(x - t.x) <= 0.8; })) o.al++;
@@ -1262,7 +1354,7 @@ function buildSlots(pages, eng) {
     var beams = (pd.beams || []).filter(function (b) { return Math.min(b.y0, b.y1) > sys.sysTop - 25 && Math.max(b.y0, b.y1) < sys.top - 1; });
     sys.measures.forEach(function (m) {
       // a real tuplet number sits right by the stems it groups; a page number or fingering further off is ignored
-      m.tuplets = m.tuplets.filter(function (u) { return stems.some(function (v) { return Math.abs(v.p - u.x) < 22 && u.y > v.a - 16 && u.y < v.b + 16; }); });
+      m.tuplets = m.tuplets.filter(function (u) { return stems.some(function (v) { return Math.abs(v.p - u.x) < 24 && u.y > v.a - 18 && u.y < v.b + 18; }); });
       m.cols.forEach(function (c, ci) {
         var hs = sys.glyphs.filter(function (t) { return heads[key(t)] && Math.abs(t.x - c.x) <= 4.5; });
         if (!c.small && hs.length) c.grace = hs.every(function (t) { return t.h < nh * 0.85; });   // otherwise keep the guess made from the tab alone
@@ -1277,7 +1369,9 @@ function buildSlots(pages, eng) {
         var best = null, bd = 1e9;
         slots.forEach(function (sl) { var d = Math.abs(sl.x - t.x); if (d < bd) { bd = d; best = sl; } });
         // same moment: on the column, or (for a notehead) pushed one head-width aside in a tight chord
-        if (best && (bd <= 4.5 || (isHead && Math.abs(bd - nw) < 1.6))) best.items.push(t);
+        // (pushed aside only happens to a note a step away from another note of the chord)
+        var aside = isHead && best && Math.abs(bd - nw) < 1.6 && sys.glyphs.some(function (o) { return o !== t && heads[key(o)] && Math.abs(o.x - best.x) <= 4.5 && Math.abs(o.y - t.y) <= sys.nsp * 0.6; });
+        if (best && (bd <= 4.5 || aside)) best.items.push(t);
         else slots.push({ x: t.x, col: null, items: [t] });
       });
       slots.sort(function (a, b) { return a.x - b.x; });
@@ -1290,6 +1384,7 @@ function buildSlots(pages, eng) {
         var lo = sl.x, hi = sl.x;
         sl.items.forEach(function (t) { if (!REST_LEN[t.s]) { lo = Math.min(lo, t.x); hi = Math.max(hi, t.x); } });
         var mine = stems.filter(function (v) { return v.p >= lo - 1 && v.p <= hi + nw + 1; });
+        mine.forEach(function (v) { v.val = 0; });
         mine.forEach(function (v) {
           var nb = 0, fl = 0;
           beams.forEach(function (b) {
@@ -1298,14 +1393,26 @@ function buildSlots(pages, eng) {
             if (y >= v.a - 1.5 - b.th / 2 && y <= v.b + 1.5 + b.th / 2) nb++;
           });
           sys.glyphs.forEach(function (t) { if (FLAG_LEN[t.s] && Math.abs(t.x - v.p) < 1 && t.y > v.a - 4 && t.y < v.b + 4 && t.h >= nh * 0.85) fl = fl ? Math.min(fl, FLAG_LEN[t.s]) : FLAG_LEN[t.s]; });
-          if (nb) vals.push(Math.max(3, 24 >> Math.min(nb, 3))); else if (fl) vals.push(fl); else plain++;
+          if (nb) vals.push(v.val = Math.max(3, 24 >> Math.min(nb, 3))); else if (fl) vals.push(v.val = fl); else plain++;
         });
         if (hasHead && plain) vals.push(hasFilled ? 24 : 48);
         else if (hasHead && !mine.length && !hasFilled) vals.push(96);
         sl.v = vals.length ? Math.min.apply(null, vals) : null;
-        sl.dotted = sys.glyphs.some(function (d) {
-          return DOT_CH[d.s] && sl.items.some(function (t) { var dx = d.x - t.x; return dx > t.w * 0.9 && dx < t.w + 9 && Math.abs(d.y - t.y) <= sys.nsp * 0.65; });
-        });
+        // dotted when the shortest notes here carry a dot: a dotted bass note under an undotted chord of the same
+        // written length doesn't make the chord any longer. Each notehead takes its length from the stem it hangs on.
+        var hasDot = function (t) { return sys.glyphs.some(function (d) { var dx = d.x - t.x; return DOT_CH[d.s] && dx > t.w * 0.9 && dx < t.w + 9 && Math.abs(d.y - t.y) <= sys.nsp * 0.65; }); };
+        var headVal = function (t) {
+          if (REST_LEN[t.s]) return REST_LEN[t.s];
+          var best = 0;
+          mine.forEach(function (v) {
+            if (v.p < t.x - 1.5 || v.p > t.x + nw + 1.5 || t.y < v.a - sys.nsp || t.y > v.b + sys.nsp) return;
+            var hv = v.val || (key(t) === filled ? 24 : 48);
+            best = best ? Math.min(best, hv) : hv;
+          });
+          return best || (key(t) === filled ? 24 : 96);
+        };
+        var shortest = sl.items.filter(function (t) { return headVal(t) === sl.v; });
+        sl.dotted = shortest.length ? shortest.every(hasDot) : sl.items.some(hasDot);
         sl.trip = false;
       });
       markTuplets(m, slots, nw / 2);
@@ -1333,8 +1440,9 @@ function posPenalty(p, trip) {
 }
 function lenCost(d, sl, last) {
   var v = sl.v;
-  if (!v || d === v) return 0;
+  if (!v) return 0;
   if (sl.trip && d * 3 === v * 2) return 0;
+  if (d === v) return sl.trip ? 1 : 0;     // under a "3" the note should be a triplet
   if (d * 2 === v * 3) return sl.dotted ? 0.05 : 2;
   if (d < v) return last ? 1 : 0.3;     // another part comes in before this note is over
   return 3.5;                           // longer than the note that is written
@@ -1449,27 +1557,49 @@ function analyzeRhythm(eng, beatsOverride) {
   });
 }
 
-// The order bars are played in, following repeat signs and 1st/2nd endings.
+// The order bars are played in, following repeat signs (played as many times as a "Play 3x" asks), 1st/2nd endings,
+// and D.S. / D.C. jumps with their codas and Fine. After a jump repeats are not taken again and only last endings play.
 function playOrder(eng, follow) {
   var list = [];
   eng.systems.forEach(function (sys, si) { sys.measures.forEach(function (m) { list.push({ m: m, si: si, mi: list.length }); }); });
-  var order = [], i = 0, start = 0, taken = {}, second = false, guard = 0;
+  if (!follow) return list.map(function (o) { return { m: o.m, si: o.si, mi: o.mi, u: o.m.unit || 1 }; });
+  var segno = -1, k, unit = eng.info.tempoUnit || 1;
+  for (k = 0; k < list.length; k++) if (list[k].m.segno) { segno = k; break; }
+  var order = [], i = 0, start = 0, pass = 1, done = {}, jumped = null, guard = 0;
+  var codaAfter = function (from) { for (var c = from + 1; c < list.length; c++) if (list[c].m.codaHead) return c; return -1; };
   while (i < list.length && guard++ < 5000) {
     var m = list[i].m;
-    if (!follow) { order.push(list[i]); i++; continue; }
-    if (m.startRep) start = i;
-    if (second && m.volta === 1) {   // second time round: jump over the first ending
+    if (m.startRep && i !== start && !jumped) { start = i; pass = 1; }
+    if (m.volta && ((jumped && m.volta === 1) || (!jumped && pass > 1 && m.volta < pass))) {   // an ending for an earlier time round: skip it
       var e = i; while (e < list.length && !list[e].m.endRep) e++;
-      if (e < list.length) { taken[e] = true; i = e + 1; start = i; second = false; continue; }
+      i = e < list.length ? e + 1 : i + 1; if (!jumped) { start = i; pass = 1; } continue;
     }
-    order.push(list[i]);
-    if (m.endRep && !taken[i]) { taken[i] = true; i = start; second = true; continue; }
-    if (m.endRep) { second = false; start = i + 1; }
+    // the beat length goes with the music as it is played: a modulation printed on a bar changes it from there,
+    // a jump back takes the length that bar had the first time, and a coda keeps the one it was jumped from
+    if (m.modulate) unit = (m.unitIn || 1) * m.modulate;
+    order.push({ m: m, si: list[i].si, mi: list[i].mi, u: unit });
+    if (m.endRep && !jumped) {
+      // how many times round: "Play 3x" printed anywhere over the repeated bars, otherwise twice
+      var want = 2;
+      for (k = start; k <= i; k++) if (list[k].m.passes) want = list[k].m.passes;
+      if (m.volta && m.volta >= want) want = m.volta + 1;
+      done[i] = (done[i] || 1);
+      if (done[i] < want) { done[i]++; pass = done[i]; i = start; continue; }
+      start = i + 1; pass = 1;
+    }
+    if (!jumped && m.jump) {
+      jumped = m.jump.until;
+      i = m.jump.from === "segno" && segno >= 0 ? segno : 0;
+      unit = list[i].m.unitIn || 1;
+      continue;
+    }
+    if (jumped === "coda" && m.toCoda) { var c = codaAfter(i); if (c >= 0) { i = c; jumped = "end"; continue; } }
+    if (jumped === "fine" && m.fine) break;
     i++;
   }
   return order;
 }
-function hasRepeats(eng) { return eng.systems.some(function (s) { return s.measures.some(function (m) { return m.endRep; }); }); }
+function hasRepeats(eng) { return eng.systems.some(function (s) { return s.measures.some(function (m) { return m.endRep || m.jump; }); }); }
 
 // The rhythm analysis is the slow part and depends only on the forced bar length, so it is done once and kept.
 function ensureAnalyzed(eng, beatsOverride) {
@@ -1491,6 +1621,22 @@ function validFix(fx, m) {
 // One entry per printed bar: how it was read, how sure the reading is, and whether a correction is in force.
 // A bar is "unsure" when no rhythm on the grid explained its spacing and written note lengths well.
 var UNSURE_COST = 2.5;
+// With notation to go by, a bar is doubtful when the rhythm found makes a note longer (or shorter, under a "3")
+// than it is written, since engravers space a bar loosely when several voices share it. With the tab alone, it is
+// doubtful when the spacing fits no rhythm well.
+function doubtful(m) {
+  if (m.fitCost < 0 || !m.pos) return true;
+  var k = m.slots.length, known = 0, off = 0;
+  m.slots.forEach(function (sl, i) {
+    if (!sl.v) return;
+    known++;
+    var d = (i + 1 < k ? m.pos[i + 1] : m.T) - m.pos[i];
+    if (i + 1 === k && d < sl.v) return;             // the last note may be tied over the barline
+    if (lenCost(d, sl, false) >= 1) off++;
+  });
+  if (known >= k / 2) return off > 0;
+  return m.fitCost >= Math.max(UNSURE_COST, k * 0.5);
+}
 function barReport(eng, beatsOverride, fixes) {
   ensureAnalyzed(eng, beatsOverride);
   var out = [];
@@ -1501,7 +1647,7 @@ function barReport(eng, beatsOverride, fixes) {
         for (var k = 0; k < m.slots.length; k++) if (m.slots[k].col === c) { auto.push(m.pos ? Math.round(m.pos[k]) / TPB : 0); break; }
       });
       out.push({ mi: mi, si: si, m: m, cols: cols, pickup: !!m.pickup, autoBeats: m.T / TPB, auto: auto,
-        fixed: !!(fixes && validFix(fixes[mi], m)), unsure: cols.length > 0 && (m.fitCost < 0 || m.fitCost >= UNSURE_COST) });
+        fixed: !!(fixes && validFix(fixes[mi], m)), unsure: cols.length > 0 && doubtful(m) });
     });
   });
   return out;
@@ -1512,7 +1658,7 @@ function engravedTimeline(eng, beatsOverride, follow, fixes) {
   ensureAnalyzed(eng, beatsOverride);
   var events = [], clicks = [], bars = [], t = 0, maxFret = 0, lastMain = -8;
   playOrder(eng, follow !== false).forEach(function (o) {
-    var m = o.m, fx = fixes && validFix(fixes[o.mi], m) ? fixes[o.mi] : null, beats = fx ? fx.beats : m.T / TPB, pend = [], main = 0;
+    var m = o.m, u = o.u || m.unit || 1, fx = fixes && validFix(fixes[o.mi], m) ? fixes[o.mi] : null, beats = (fx ? fx.beats : m.T / TPB) / u, pend = [], main = 0;
     bars.push({ beat: t, beats: beats, pickup: !!m.pickup, sys: o.si, mi: o.mi, xa: m.xa, xb: m.xb, first: !!m.firstInSys });
     var barIdx = bars.length - 1;
     m.cols.forEach(function (c) {
@@ -1523,8 +1669,8 @@ function engravedTimeline(eng, beatsOverride, follow, fixes) {
       events.push(ev);
       if (c.grace) { ev.grace = true; pend.push(ev); return; }
       ev.col = main;
-      if (fx) ev.beat = t + fx.at[main];
-      else for (var si = 0; si < m.slots.length; si++) if (m.slots[si].col === c) { ev.beat = t + m.pos[si] / TPB; break; }
+      if (fx) ev.beat = t + fx.at[main] / u;
+      else for (var si = 0; si < m.slots.length; si++) if (m.slots[si].col === c) { ev.beat = t + m.pos[si] / TPB / u; break; }
       main++;
       if (pend.length) {
         // a grace note takes a sixteenth of a beat at most, shared out if there are several, and never
@@ -2551,11 +2697,17 @@ if (typeof module !== "undefined") module.exports = { getPageData: getPageData, 
     var top = 0; pdfEvents.forEach(function (e) { e.notes.forEach(function (n) { if (n.fret > top) top = n.fret; }); });
     buildBoard(eng.nStr, eng.tuning, top);
     var bits = [];
-    if (eng.info.tempo) bits.push("tempo " + eng.info.tempo);
+    var beatName = { 1.5: "dotted quarter", 2: "half note", 0.5: "eighth note", 3: "dotted half" }[eng.info.tempoUnit];
+    if (eng.info.tempo) bits.push("tempo " + eng.info.tempo + (beatName ? " (a " + beatName + " a beat)" : ""));
     else if (eng.info.tempoWord) bits.push("tempo \u201c" + eng.info.tempoWord + "\u201d (set to " + eng.info.tempoGuess + ")");
     if (eng.info.dropD) bits.push("Drop D");
     if (eng.info.capo) bits.push("capo " + eng.info.capo);
-    if (hasRepeats(eng)) bits.push("repeat signs");
+    var all = []; eng.systems.forEach(function (sy) { sy.measures.forEach(function (m) { all.push(m); }); });
+    var jump = all.filter(function (m) { return m.jump; })[0];
+    if (all.some(function (m) { return m.endRep; })) bits.push("repeat signs");
+    if (all.some(function (m) { return m.passes; })) bits.push("\u201cplay " + all.filter(function (m) { return m.passes; })[0].passes + "x\u201d");
+    if (jump) bits.push((jump.jump.from === "segno" ? "D.S." : "D.C.") + (jump.jump.until === "coda" ? " al Coda" : jump.jump.until === "fine" ? " al Fine" : ""));
+    if (all.some(function (m) { return m.modulate; })) bits.push("tempo changes between sections");
     setStatus(name + ": " + eng.count + " notes on " + doc.numPages + (doc.numPages === 1 ? " page" : " pages") + (bits.length ? ". Read from the page: " + bits.join(", ") : "") + ".");
     await renderPdf(doc, id);
     if (id === loadId && !playing) show(firstVis(), false);
